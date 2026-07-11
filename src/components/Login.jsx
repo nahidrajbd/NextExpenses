@@ -26,15 +26,6 @@ export default function Login({ onLogin }) {
     }
   };
 
-  const handleQuickLogin = (role) => {
-    if (role === 'admin') {
-      setEmail('admin@office.com');
-      setPassword('admin123');
-    } else {
-      setEmail('nahid@office.com');
-      setPassword('user123');
-    }
-  };
 
   return (
     <div style={{
@@ -188,45 +179,7 @@ export default function Login({ onLogin }) {
           </button>
         </form>
 
-        {/* Quick Log In helper panels */}
-        <div style={{
-          marginTop: '2rem',
-          borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-          paddingTop: '1.5rem',
-          textAlign: 'center'
-        }}>
-          <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.75rem' }}>
-            Demo Quick Acccess (Click to Autofill)
-          </p>
-          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
-            <button
-              onClick={() => handleQuickLogin('admin')}
-              className="btn"
-              style={{
-                fontSize: '0.75rem',
-                padding: '0.375rem 0.75rem',
-                backgroundColor: 'rgba(99, 102, 241, 0.15)',
-                color: '#a5b4fc',
-                border: '1px solid rgba(99, 102, 241, 0.3)'
-              }}
-            >
-              Demo Admin
-            </button>
-            <button
-              onClick={() => handleQuickLogin('employee')}
-              className="btn"
-              style={{
-                fontSize: '0.75rem',
-                padding: '0.375rem 0.75rem',
-                backgroundColor: 'rgba(6, 182, 212, 0.15)',
-                color: '#67e8f9',
-                border: '1px solid rgba(6, 182, 212, 0.3)'
-              }}
-            >
-              Demo Employee (Nahid)
-            </button>
-          </div>
-        </div>
+
       </div>
     </div>
   );
