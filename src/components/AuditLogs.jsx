@@ -6,34 +6,51 @@ export default function AuditLogs() {
   const [logs, setLogs] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [actionFilter, setActionFilter] = useState('All');
+  const [usersLookup, setUsersLookup] = useState([]);
+
+  useEffect(() => {
+    const initUsers = async () => {
+      try {
+        const users = await db.getUsers();
+        setUsersLookup(users);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    initUsers();
+  }, []);
 
   useEffect(() => {
     loadLogs();
-  }, [searchQuery, actionFilter]);
+  }, [searchQuery, actionFilter, usersLookup]);
 
-  const loadLogs = () => {
-    let list = db.getLogs();
+  const loadLogs = async () => {
+    try {
+      let list = await db.getLogs();
 
-    // Text Search
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      list = list.filter(l =>
-        l.description.toLowerCase().includes(q) ||
-        getActorName(l.actorId).toLowerCase().includes(q) ||
-        l.actionType.toLowerCase().includes(q)
-      );
+      // Text Search
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        list = list.filter(l =>
+          l.description.toLowerCase().includes(q) ||
+          getActorName(l.actorId).toLowerCase().includes(q) ||
+          l.actionType.toLowerCase().includes(q)
+        );
+      }
+
+      // Action Type Filter
+      if (actionFilter !== 'All') {
+        list = list.filter(l => l.actionType === actionFilter);
+      }
+
+      setLogs(list);
+    } catch (e) {
+      console.error("Failed to load logs", e);
     }
-
-    // Action Type Filter
-    if (actionFilter !== 'All') {
-      list = list.filter(l => l.actionType === actionFilter);
-    }
-
-    setLogs(list);
   };
 
   const getActorName = (id) => {
-    const user = db.getUsers().find(u => u.id === id);
+    const user = usersLookup.find(u => u.id === id);
     return user ? `${user.name} (${user.role})` : 'Unknown Actor';
   };
 

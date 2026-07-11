@@ -1,6 +1,51 @@
-// db.js - Mock Local Storage Database for Employee Expense Management System
+// db.js - Live Firestore & Firebase Authentication Database for NextExpenses
+import { initializeApp } from 'firebase/app';
+import { 
+  getFirestore, 
+  doc, 
+  setDoc, 
+  getDoc, 
+  getDocs, 
+  updateDoc, 
+  deleteDoc, 
+  collection, 
+  query, 
+  where, 
+  orderBy, 
+  writeBatch 
+} from 'firebase/firestore';
+import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 
-// Simple deterministic hash for mock passwords
+// Standard Firebase config loaded from environment variables
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
+};
+
+// Initialize main Firebase instance
+const app = initializeApp(firebaseConfig);
+const firestore = getFirestore(app);
+const auth = getAuth(app);
+
+// Secondary Auth instance for creating new employees without logging the Admin out
+let secondaryAuth = null;
+try {
+  const secondaryApp = initializeApp(firebaseConfig, "secondary-auth-app");
+  secondaryAuth = getAuth(secondaryApp);
+} catch (e) {
+  console.warn("Secondary Firebase Auth application failed to initialize", e);
+}
+
+// Database Initialization (Noop for Firebase, seeded via seed.js)
+export function initDB() {
+  console.log("Firebase Database client layer initialized.");
+}
+
+// Deterministic hashing password fallback (not strictly required for Firebase Auth but kept for legacy compat)
 export function hashPassword(password) {
   let hash = 0;
   for (let i = 0; i < password.length; i++) {
@@ -11,390 +56,101 @@ export function hashPassword(password) {
   return hash.toString(36);
 }
 
-// Initial Data Seeds
-const defaultCategories = [
-  { id: 'cat-1', name: 'Transport', active: true },
-  { id: 'cat-2', name: 'Food', active: true },
-  { id: 'cat-3', name: 'Office Supplies', active: true },
-  { id: 'cat-4', name: 'Courier', active: true },
-  { id: 'cat-5', name: 'Emergency Purchase', active: true },
-  { id: 'cat-6', name: 'Other', active: true }
-];
-
-const defaultUsers = [
-  {
-    id: 'user-admin',
-    email: 'admin@office.com',
-    passwordHash: hashPassword('admin123'),
-    name: 'System Admin',
-    phone: '+8801711111111',
-    role: 'admin',
-    status: 'Active',
-    dateJoined: '2025-01-01'
-  },
-  {
-    id: 'user-1',
-    email: 'nahid@office.com',
-    passwordHash: hashPassword('user123'),
-    name: 'Nahid Raj',
-    phone: '+8801812345678',
-    role: 'employee',
-    status: 'Active',
-    dateJoined: '2025-06-15'
-  },
-  {
-    id: 'user-2',
-    email: 'tanvir@office.com',
-    passwordHash: hashPassword('user123'),
-    name: 'Tanvir Hasan',
-    phone: '+8801912345678',
-    role: 'employee',
-    status: 'Active',
-    dateJoined: '2025-02-10'
-  },
-  {
-    id: 'user-3',
-    email: 'sultana@office.com',
-    passwordHash: hashPassword('user123'),
-    name: 'Sultana Razia',
-    phone: '+8801512345678',
-    role: 'employee',
-    status: 'Active',
-    dateJoined: '2025-04-01'
-  }
-];
-
-const defaultExpenses = [
-  // Nahid Raj Expenses
-  {
-    id: 'exp-1',
-    employeeId: 'user-1',
-    date: '2026-06-10',
-    categoryId: 'cat-1',
-    description: 'Uber ride to client office',
-    amount: 450,
-    attachmentId: null,
-    notes: 'Client meeting at Dhanmondi.',
-    status: 'Approved',
-    rejectionComment: ''
-  },
-  {
-    id: 'exp-2',
-    employeeId: 'user-1',
-    date: '2026-06-15',
-    categoryId: 'cat-2',
-    description: 'Dinner with clients',
-    amount: 2400,
-    attachmentId: null,
-    notes: 'Dinner at Saltz Restaurant.',
-    status: 'Approved',
-    rejectionComment: ''
-  },
-  {
-    id: 'exp-3',
-    employeeId: 'user-1',
-    date: '2026-07-01',
-    categoryId: 'cat-3',
-    description: 'Printer paper and ink cartridge',
-    amount: 1800,
-    attachmentId: null,
-    notes: 'Urgent office supply replenishment.',
-    status: 'Approved',
-    rejectionComment: ''
-  },
-  {
-    id: 'exp-4',
-    employeeId: 'user-1',
-    date: '2026-07-05',
-    categoryId: 'cat-4',
-    description: 'Sending legal contracts via DHL',
-    amount: 350,
-    attachmentId: null,
-    notes: 'Sent to corporate office.',
-    status: 'Pending',
-    rejectionComment: ''
-  },
-  {
-    id: 'exp-5',
-    employeeId: 'user-1',
-    date: '2026-07-06',
-    categoryId: 'cat-5',
-    description: 'Server backup drive replacement',
-    amount: 8500,
-    attachmentId: null,
-    notes: 'Primary backup drive crashed. Urgent.',
-    status: 'Pending',
-    rejectionComment: ''
-  },
-  // Tanvir Hasan Expenses
-  {
-    id: 'exp-6',
-    employeeId: 'user-2',
-    date: '2026-06-20',
-    categoryId: 'cat-3',
-    description: 'Dry erase whiteboard markers',
-    amount: 500,
-    attachmentId: null,
-    notes: 'For Conference Room A.',
-    status: 'Approved',
-    rejectionComment: ''
-  },
-  {
-    id: 'exp-7',
-    employeeId: 'user-2',
-    date: '2026-06-25',
-    categoryId: 'cat-1',
-    description: 'Train ticket for outstation travel',
-    amount: 1200,
-    attachmentId: null,
-    notes: 'Dhaka to Chittagong.',
-    status: 'Approved',
-    rejectionComment: ''
-  },
-  {
-    id: 'exp-8',
-    employeeId: 'user-2',
-    date: '2026-07-03',
-    categoryId: 'cat-6',
-    description: 'Office internet bill renewal',
-    amount: 3000,
-    attachmentId: null,
-    notes: 'Monthly ISP renewal.',
-    status: 'Rejected',
-    rejectionComment: 'Please route internet bills directly through the IT procurement department.'
-  },
-  // Sultana Razia Expenses
-  {
-    id: 'exp-9',
-    employeeId: 'user-3',
-    date: '2026-06-05',
-    categoryId: 'cat-2',
-    description: 'Lunch catering for training session',
-    amount: 6500,
-    attachmentId: null,
-    notes: '20 attendees.',
-    status: 'Approved',
-    rejectionComment: ''
-  },
-  {
-    id: 'exp-10',
-    employeeId: 'user-3',
-    date: '2026-06-28',
-    categoryId: 'cat-4',
-    description: 'Express package to overseas branch',
-    amount: 4200,
-    attachmentId: null,
-    notes: 'Urgent hardware sample ship.',
-    status: 'Approved',
-    rejectionComment: ''
-  }
-];
-
-const defaultPayments = [
-  {
-    id: 'pay-1',
-    employeeId: 'user-1',
-    amount: 2850,
-    date: '2026-06-20',
-    notes: 'Cleared June approved expenses (Uber & Dinner).',
-    recordedBy: 'System Admin'
-  },
-  {
-    id: 'pay-2',
-    employeeId: 'user-2',
-    amount: 1700,
-    date: '2026-07-01',
-    notes: 'Fully cleared past approved expenses.',
-    recordedBy: 'System Admin'
-  },
-  {
-    id: 'pay-3',
-    employeeId: 'user-3',
-    amount: 5000,
-    date: '2026-06-15',
-    notes: 'Partial payment clearance.',
-    recordedBy: 'System Admin'
-  }
-];
-
-const defaultLogs = [
-  {
-    id: 'log-1',
-    timestamp: '2026-06-20T10:15:00.000Z',
-    actorId: 'user-admin',
-    actionType: 'Approve Expense',
-    description: 'Approved expense exp-1 of 450 BDT for Nahid Raj'
-  },
-  {
-    id: 'log-2',
-    timestamp: '2026-06-20T10:15:30.000Z',
-    actorId: 'user-admin',
-    actionType: 'Approve Expense',
-    description: 'Approved expense exp-2 of 2400 BDT for Nahid Raj'
-  },
-  {
-    id: 'log-3',
-    timestamp: '2026-06-20T11:00:00.000Z',
-    actorId: 'user-admin',
-    actionType: 'Record Payment',
-    description: 'Recorded payment of 2850 BDT for Nahid Raj'
-  },
-  {
-    id: 'log-4',
-    timestamp: '2026-07-01T15:30:00.000Z',
-    actorId: 'user-admin',
-    actionType: 'Record Payment',
-    description: 'Recorded payment of 1700 BDT for Tanvir Hasan'
-  },
-  {
-    id: 'log-5',
-    timestamp: '2026-07-03T16:00:00.000Z',
-    actorId: 'user-admin',
-    actionType: 'Reject Expense',
-    description: 'Rejected expense exp-8 of 3000 BDT for Tanvir Hasan'
-  }
-];
-
-const defaultNotifications = [
-  {
-    id: 'notif-1',
-    employeeId: 'user-1',
-    title: 'Expense Approved',
-    message: 'Your expense for "Uber ride to client office" (450 BDT) has been approved.',
-    date: '2026-06-20T10:15:00.000Z',
-    read: true
-  },
-  {
-    id: 'notif-2',
-    employeeId: 'user-1',
-    title: 'Payment Recorded',
-    message: 'A payment of 2,850 BDT was recorded for you.',
-    date: '2026-06-20T11:00:00.000Z',
-    read: true
-  },
-  {
-    id: 'notif-3',
-    employeeId: 'user-2',
-    title: 'Expense Rejected',
-    message: 'Your expense for "Office internet bill renewal" (3000 BDT) has been rejected. Reason: Please route internet bills directly through the IT procurement department.',
-    date: '2026-07-03T16:00:00.000Z',
-    read: false
-  }
-];
-
-// Local Storage Handlers
-function getItem(key, defaultValue) {
-  const data = localStorage.getItem(key);
-  if (!data) {
-    localStorage.setItem(key, JSON.stringify(defaultValue));
-    return defaultValue;
-  }
-  try {
-    return JSON.parse(data);
-  } catch (e) {
-    console.error(`Error parsing localStorage key ${key}`, e);
-    return defaultValue;
-  }
-}
-
-function setItem(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
-}
-
-// Database Initialization
-export function initDB() {
-  getItem('ne_categories', defaultCategories);
-  getItem('ne_users', defaultUsers);
-  getItem('ne_expenses', defaultExpenses);
-  getItem('ne_payments', defaultPayments);
-  getItem('ne_logs', defaultLogs);
-  getItem('ne_notifications', defaultNotifications);
-}
-
-// CRUD Operations
+// Firestore operations mapping the previous db.js interface
 export const db = {
   hashPassword,
+
   // Categories
-  getCategories() {
-    return getItem('ne_categories', defaultCategories);
+  async getCategories() {
+    const qSnapshot = await getDocs(collection(firestore, 'categories'));
+    return qSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   },
-  saveCategories(categories) {
-    setItem('ne_categories', categories);
-  },
-  addCategory(name) {
-    const categories = this.getCategories();
+
+  async addCategory(name) {
+    const id = `cat-${Date.now()}`;
     const newCat = {
-      id: `cat-${Date.now()}`,
+      id,
       name: name.trim(),
       active: true
     };
-    categories.push(newCat);
-    this.saveCategories(categories);
+    await setDoc(doc(firestore, 'categories', id), newCat);
     return newCat;
   },
-  updateCategory(id, name, active) {
-    const categories = this.getCategories();
-    const index = categories.findIndex(c => c.id === id);
-    if (index !== -1) {
-      categories[index] = { ...categories[index], name: name.trim(), active };
-      this.saveCategories(categories);
-      return categories[index];
-    }
-    return null;
+
+  async updateCategory(id, name, active) {
+    const catRef = doc(firestore, 'categories', id);
+    const updated = { name: name.trim(), active };
+    await updateDoc(catRef, updated);
+    return { id, ...updated };
   },
 
   // Users / Employees
-  getUsers() {
-    return getItem('ne_users', defaultUsers);
+  async getUsers() {
+    const qSnapshot = await getDocs(collection(firestore, 'users'));
+    return qSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   },
-  getEmployees() {
-    return this.getUsers().filter(u => u.role === 'employee');
+
+  async getEmployees() {
+    const users = await this.getUsers();
+    return users.filter(u => u.role === 'employee');
   },
-  saveUsers(users) {
-    setItem('ne_users', users);
-  },
-  addUser(user) {
-    const users = this.getUsers();
+
+  async addUser(user) {
+    let uid = `user-${Date.now()}`; // Fallback if Auth creation fails
+    try {
+      if (secondaryAuth) {
+        const userCredential = await createUserWithEmailAndPassword(
+          secondaryAuth, 
+          user.email.toLowerCase().trim(), 
+          user.password || 'password123'
+        );
+        uid = userCredential.user.uid;
+        await secondaryAuth.signOut(); // Sign out right away
+      }
+    } catch (e) {
+      console.warn("Could not register employee credentials in Firebase Auth:", e.message);
+    }
+
     const newUser = {
-      id: `user-${Date.now()}`,
+      id: uid,
       email: user.email.toLowerCase().trim(),
-      passwordHash: hashPassword(user.password || 'password123'),
       name: user.name.trim(),
       phone: user.phone.trim(),
       role: user.role || 'employee',
       status: user.status || 'Active',
       dateJoined: user.dateJoined || new Date().toISOString().split('T')[0]
     };
-    users.push(newUser);
-    this.saveUsers(users);
+    await setDoc(doc(firestore, 'users', uid), newUser);
     return newUser;
   },
-  updateUser(id, updatedData) {
-    const users = this.getUsers();
-    const index = users.findIndex(u => u.id === id);
-    if (index !== -1) {
-      if (updatedData.password) {
-        updatedData.passwordHash = hashPassword(updatedData.password);
-        delete updatedData.password;
-      }
-      users[index] = { ...users[index], ...updatedData };
-      this.saveUsers(users);
-      return users[index];
-    }
-    return null;
+
+  async updateUser(id, updatedData) {
+    const userRef = doc(firestore, 'users', id);
+    const cleanData = { ...updatedData };
+    
+    // Auth updates should go through user authentication flow; delete legacy fields
+    delete cleanData.password;
+    delete cleanData.passwordHash;
+
+    await updateDoc(userRef, cleanData);
+    const freshDoc = await getDoc(userRef);
+    return { id, ...freshDoc.data() };
+  },
+
+  async deleteUser(id) {
+    await deleteDoc(doc(firestore, 'users', id));
   },
 
   // Expenses
-  getExpenses() {
-    return getItem('ne_expenses', defaultExpenses);
+  async getExpenses() {
+    const qSnapshot = await getDocs(collection(firestore, 'expenses'));
+    return qSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   },
-  saveExpenses(expenses) {
-    setItem('ne_expenses', expenses);
-  },
-  addExpense(expense) {
-    const expenses = this.getExpenses();
+
+  async addExpense(expense) {
+    const id = `exp-${Date.now()}`;
     const newExp = {
-      id: `exp-${Date.now()}`,
+      id,
       employeeId: expense.employeeId,
       date: expense.date,
       categoryId: expense.categoryId,
@@ -405,112 +161,121 @@ export const db = {
       status: 'Pending',
       rejectionComment: ''
     };
-    expenses.push(newExp);
-    this.saveExpenses(expenses);
+    await setDoc(doc(firestore, 'expenses', id), newExp);
     return newExp;
   },
-  updateExpense(id, updatedData) {
-    const expenses = this.getExpenses();
-    const index = expenses.findIndex(e => e.id === id);
-    if (index !== -1) {
-      expenses[index] = { ...expenses[index], ...updatedData };
-      this.saveExpenses(expenses);
-      return expenses[index];
-    }
-    return null;
+
+  async updateExpense(id, updatedData) {
+    const expRef = doc(firestore, 'expenses', id);
+    await updateDoc(expRef, updatedData);
+    const freshDoc = await getDoc(expRef);
+    return { id, ...freshDoc.data() };
   },
-  deleteExpense(id) {
-    const expenses = this.getExpenses();
-    const filtered = expenses.filter(e => e.id !== id);
-    this.saveExpenses(filtered);
+
+  async deleteExpense(id) {
+    await deleteDoc(doc(firestore, 'expenses', id));
   },
 
   // Payments
-  getPayments() {
-    return getItem('ne_payments', defaultPayments);
+  async getPayments() {
+    const qSnapshot = await getDocs(collection(firestore, 'payments'));
+    return qSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   },
-  savePayments(payments) {
-    setItem('ne_payments', payments);
-  },
-  addPayment(payment, actorName) {
-    const payments = this.getPayments();
+
+  async addPayment(payment, actorName) {
+    const id = `pay-${Date.now()}`;
     const newPayment = {
-      id: `pay-${Date.now()}`,
+      id,
       employeeId: payment.employeeId,
       amount: parseFloat(payment.amount),
       date: payment.date,
       notes: payment.notes ? payment.notes.trim() : '',
       recordedBy: actorName || 'System Admin'
     };
-    payments.push(newPayment);
-    this.savePayments(payments);
+    await setDoc(doc(firestore, 'payments', id), newPayment);
     return newPayment;
   },
 
   // Audit Logs
-  getLogs() {
-    return getItem('ne_logs', defaultLogs);
+  async getLogs() {
+    const q = query(collection(firestore, 'logs'), orderBy('timestamp', 'desc'));
+    try {
+      const qSnapshot = await getDocs(q);
+      return qSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (e) {
+      // Fallback if index is provisioning
+      const qSnapshot = await getDocs(collection(firestore, 'logs'));
+      const list = qSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      return list.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    }
   },
-  saveLogs(logs) {
-    setItem('ne_logs', logs);
-  },
-  addLog(actorId, actionType, description) {
-    const logs = this.getLogs();
+
+  async addLog(actorId, actionType, description) {
+    const id = `log-${Date.now()}`;
     const newLog = {
-      id: `log-${Date.now()}`,
+      id,
       timestamp: new Date().toISOString(),
       actorId,
       actionType,
       description
     };
-    logs.unshift(newLog); // latest log first
-    this.saveLogs(logs);
+    await setDoc(doc(firestore, 'logs', id), newLog);
   },
 
   // Notifications
-  getNotifications(employeeId) {
-    const all = getItem('ne_notifications', defaultNotifications);
-    return all.filter(n => n.employeeId === employeeId);
+  async getNotifications(employeeId) {
+    const q = query(
+      collection(firestore, 'notifications'), 
+      where('employeeId', '==', employeeId)
+    );
+    const qSnapshot = await getDocs(q);
+    const list = qSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return list.sort((a, b) => new Date(b.date) - new Date(a.date));
   },
-  addNotification(employeeId, title, message) {
-    const all = getItem('ne_notifications', defaultNotifications);
+
+  async addNotification(employeeId, title, message) {
+    const id = `notif-${Date.now()}`;
     const newNotif = {
-      id: `notif-${Date.now()}`,
+      id,
       employeeId,
       title,
       message,
       date: new Date().toISOString(),
       read: false
     };
-    all.unshift(newNotif);
-    setItem('ne_notifications', all);
+    await setDoc(doc(firestore, 'notifications', id), newNotif);
   },
-  markNotificationsAsRead(employeeId) {
-    const all = getItem('ne_notifications', defaultNotifications);
-    const updated = all.map(n => n.employeeId === employeeId ? { ...n, read: true } : n);
-    setItem('ne_notifications', updated);
+
+  async markNotificationsAsRead(employeeId) {
+    const q = query(
+      collection(firestore, 'notifications'), 
+      where('employeeId', '==', employeeId),
+      where('read', '==', false)
+    );
+    const qSnapshot = await getDocs(q);
+    const batch = writeBatch(firestore);
+    qSnapshot.forEach((docSnapshot) => {
+      batch.update(docSnapshot.ref, { read: true });
+    });
+    await batch.commit();
   },
 
   // Aggregate Calculations for Employee Balance Ledgers
-  getEmployeeLedger() {
-    const employees = this.getEmployees();
-    const expenses = this.getExpenses();
-    const payments = this.getPayments();
+  async getEmployeeLedger() {
+    const employees = await this.getEmployees();
+    const expenses = await this.getExpenses();
+    const payments = await this.getPayments();
 
     return employees.map(emp => {
-      // 1. Spent: Total expenses submitted
       const empExpenses = expenses.filter(e => e.employeeId === emp.id);
       const totalSpent = empExpenses.reduce((sum, e) => sum + e.amount, 0);
 
-      // 2. Approved: Total approved expenses
       const approvedExpenses = empExpenses.filter(e => e.status === 'Approved');
       const totalApproved = approvedExpenses.reduce((sum, e) => sum + e.amount, 0);
 
-      // 3. Paid: Total payments recorded
       const empPayments = payments.filter(p => p.employeeId === emp.id);
       const totalPaid = empPayments.reduce((sum, p) => sum + p.amount, 0);
 
-      // 4. Owed: Approved - Paid
       const balanceDue = totalApproved - totalPaid;
 
       return {
@@ -523,9 +288,9 @@ export const db = {
     });
   },
 
-  getSingleEmployeeSummary(employeeId) {
-    const expenses = this.getExpenses().filter(e => e.employeeId === employeeId);
-    const payments = this.getPayments().filter(p => p.employeeId === employeeId);
+  async getSingleEmployeeSummary(employeeId) {
+    const expenses = (await this.getExpenses()).filter(e => e.employeeId === employeeId);
+    const payments = (await this.getPayments()).filter(p => p.employeeId === employeeId);
 
     const totalSpent = expenses.reduce((sum, e) => sum + e.amount, 0);
     

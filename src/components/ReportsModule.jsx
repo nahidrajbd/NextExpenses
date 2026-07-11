@@ -16,102 +16,121 @@ export default function ReportsModule() {
   const [reportData, setReportData] = useState([]);
   const [categories, setCategories] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [usersLookup, setUsersLookup] = useState([]);
 
   useEffect(() => {
-    setCategories(db.getCategories());
-    setEmployees(db.getEmployees());
-    generateReport();
+    const initData = async () => {
+      try {
+        const [cats, emps, users] = await Promise.all([
+          db.getCategories(),
+          db.getEmployees(),
+          db.getUsers()
+        ]);
+        setCategories(cats);
+        setEmployees(emps);
+        setUsersLookup(users);
+        await generateReport(cats, emps, users);
+      } catch (e) {
+        console.error("Failed to load reports initial data", e);
+      }
+    };
+    initData();
   }, [activeReport]);
 
-  const generateReport = () => {
-    const expenses = db.getExpenses();
-    const payments = db.getPayments();
-    const cats = db.getCategories();
-    const emps = db.getEmployees();
+  const generateReport = async (cats = categories, emps = employees, users = usersLookup) => {
+    try {
+      const [expenses, payments, ledgerData] = await Promise.all([
+        db.getExpenses(),
+        db.getPayments(),
+        db.getEmployeeLedger()
+      ]);
 
-    switch (activeReport) {
-      case 'monthly': {
-        // Group approved expenses by year-month
-        const monthsMap = {};
-        expenses.forEach(e => {
-          if (e.status !== 'Approved') return;
-          const monthStr = e.date.substring(0, 7); // "YYYY-MM"
-          if (!monthsMap[monthStr]) {
-            monthsMap[monthStr] = { month: monthStr, amount: 0, count: 0 };
-          }
-          monthsMap[monthStr].amount += e.amount;
-          monthsMap[monthStr].count += 1;
-        });
-        
-        const sorted = Object.values(monthsMap).sort((a, b) => b.month.localeCompare(a.month));
-        setReportData(sorted);
-        break;
-      }
-      case 'employee': {
-        // Summarize statistics per employee
-        const empSummary = emps.map(emp => {
-          const empExps = expenses.filter(e => e.employeeId === emp.id);
-          const totalSpent = empExps.reduce((sum, e) => sum + e.amount, 0);
+      switch (activeReport) {
+        case 'monthly': {
+          // Group approved expenses by year-month
+          const monthsMap = {};
+          expenses.forEach(e => {
+            if (e.status !== 'Approved') return;
+            const monthStr = e.date.substring(0, 7); // "YYYY-MM"
+            if (!monthsMap[monthStr]) {
+              monthsMap[monthStr] = { month: monthStr, amount: 0, count: 0 };
+            }
+            monthsMap[monthStr].amount += e.amount;
+            monthsMap[monthStr].count += 1;
+          });
           
-          const approved = empExps.filter(e => e.status === 'Approved').reduce((sum, e) => sum + e.amount, 0);
-          const pending = empExps.filter(e => e.status === 'Pending').reduce((sum, e) => sum + e.amount, 0);
-          const rejected = empExps.filter(e => e.status === 'Rejected').reduce((sum, e) => sum + e.amount, 0);
-          
-          const paid = payments.filter(p => p.employeeId === emp.id).reduce((sum, p) => sum + p.amount, 0);
-          const balance = approved - paid;
+          const sorted = Object.values(monthsMap).sort((a, b) => b.month.localeCompare(a.month));
+          setReportData(sorted);
+          break;
+        }
+        case 'employee': {
+          // Summarize statistics per employee
+          const empSummary = emps.map(emp => {
+            const empExps = expenses.filter(e => e.employeeId === emp.id);
+            const totalSpent = empExps.reduce((sum, e) => sum + e.amount, 0);
+            
+            const approved = empExps.filter(e => e.status === 'Approved').reduce((sum, e) => sum + e.amount, 0);
+            const pending = empExps.filter(e => e.status === 'Pending').reduce((sum, e) => sum + e.amount, 0);
+            const rejected = empExps.filter(e => e.status === 'Rejected').reduce((sum, e) => sum + e.amount, 0);
+            
+            const paid = payments.filter(p => p.employeeId === emp.id).reduce((sum, p) => sum + p.amount, 0);
+            const balance = approved - paid;
 
-          return {
-            name: emp.name,
-            email: emp.email,
-            totalSpent,
-            approved,
-            pending,
-            rejected,
-            paid,
-            balance
-          };
-        });
-        setReportData(empSummary);
-        break;
+            return {
+              name: emp.name,
+              email: emp.email,
+              totalSpent,
+              approved,
+              pending,
+              rejected,
+              paid,
+              balance
+            };
+          });
+          setReportData(empSummary);
+          break;
+        }
+        case 'category': {
+          // Approved sums by category
+          const catSummary = cats.map(cat => {
+            const catExps = expenses.filter(e => e.categoryId === cat.id && e.status === 'Approved');
+            const amount = catExps.reduce((sum, e) => sum + e.amount, 0);
+            const count = catExps.length;
+            return {
+              categoryName: cat.name,
+              amount,
+              count
+            };
+          }).sort((a, b) => b.amount - a.amount);
+          setReportData(catSummary);
+          break;
+        }
+        case 'payments': {
+          // Detail payment list
+          const pays = payments.map(p => {
+            const emp = users.find(u => u.id === p.employeeId);
+            return {
+              date: p.date,
+              employeeName: emp ? emp.name : 'Unknown',
+              amount: p.amount,
+              notes: p.notes || '—',
+              recordedBy: p.recordedBy
+            };
+          }).sort((a, b) => new Date(b.date) - new Date(a.date));
+          setReportData(pays);
+          break;
+        }
+        case 'outstanding': {
+          // Active employees with due balance
+          const outstandingLedger = ledgerData.filter(item => item.balanceDue > 0);
+          setReportData(outstandingLedger);
+          break;
+        }
+        default:
+          break;
       }
-      case 'category': {
-        // Approved sums by category
-        const catSummary = cats.map(cat => {
-          const catExps = expenses.filter(e => e.categoryId === cat.id && e.status === 'Approved');
-          const amount = catExps.reduce((sum, e) => sum + e.amount, 0);
-          const count = catExps.length;
-          return {
-            categoryName: cat.name,
-            amount,
-            count
-          };
-        }).sort((a, b) => b.amount - a.amount);
-        setReportData(catSummary);
-        break;
-      }
-      case 'payments': {
-        // Detail payment list
-        const pays = payments.map(p => {
-          const emp = db.getUsers().find(u => u.id === p.employeeId);
-          return {
-            date: p.date,
-            employeeName: emp ? emp.name : 'Unknown',
-            amount: p.amount,
-            notes: p.notes || '—',
-            recordedBy: p.recordedBy
-          };
-        }).sort((a, b) => new Date(b.date) - new Date(a.date));
-        setReportData(pays);
-        break;
-      }
-      case 'outstanding': {
-        // Active employees with due balance
-        const ledger = db.getEmployeeLedger().filter(item => item.balanceDue > 0);
-        setReportData(ledger);
-        break;
-      }
-      default:
-        break;
+    } catch (err) {
+      console.error("Failed to generate report", err);
     }
   };
 

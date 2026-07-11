@@ -27,6 +27,7 @@ export default function EmployeeDashboard({ onRefreshNotifs }) {
   const [expenses, setExpenses] = useState([]);
   const [payments, setPayments] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [allCategoriesLookup, setAllCategoriesLookup] = useState([]);
   
   // Modals
   const [isSubmitOpen, setIsSubmitOpen] = useState(false);
@@ -55,28 +56,37 @@ export default function EmployeeDashboard({ onRefreshNotifs }) {
     loadDashboardData();
   }, [currentUser]);
 
-  const loadDashboardData = () => {
+  const loadDashboardData = async () => {
     if (!currentUser) return;
-    
-    // Get summary and data
-    const summaryData = db.getSingleEmployeeSummary(currentUser.id);
-    setSummary(summaryData);
+    try {
+      const [summaryData, allExpensesRaw, allPaymentsRaw, allCategories, notifs] = await Promise.all([
+        db.getSingleEmployeeSummary(currentUser.id),
+        db.getExpenses(),
+        db.getPayments(),
+        db.getCategories(),
+        db.getNotifications(currentUser.id)
+      ]);
 
-    const allExpenses = db.getExpenses().filter(e => e.employeeId === currentUser.id);
-    // Sort latest expenses first
-    setExpenses(allExpenses.sort((a, b) => new Date(b.date) - new Date(a.date)));
+      setSummary(summaryData);
 
-    const allPayments = db.getPayments().filter(p => p.employeeId === currentUser.id);
-    setPayments(allPayments.sort((a, b) => new Date(b.date) - new Date(a.date)));
+      const empExpenses = allExpensesRaw.filter(e => e.employeeId === currentUser.id);
+      setExpenses(empExpenses.sort((a, b) => new Date(b.date) - new Date(a.date)));
 
-    const activeCategories = db.getCategories().filter(c => c.active);
-    setCategories(activeCategories);
-    if (activeCategories.length > 0 && !categoryId) {
-      setCategoryId(activeCategories[0].id);
+      const empPayments = allPaymentsRaw.filter(p => p.employeeId === currentUser.id);
+      setPayments(empPayments.sort((a, b) => new Date(b.date) - new Date(a.date)));
+
+      setAllCategoriesLookup(allCategories);
+      const activeCategories = allCategories.filter(c => c.active);
+      setCategories(activeCategories);
+      if (activeCategories.length > 0 && !categoryId) {
+        setCategoryId(activeCategories[0].id);
+      }
+
+      setNotifications(notifs);
+    } catch (e) {
+      console.error("Failed to load dashboard data", e);
+      showToast('Error loading dashboard statistics.', 'error');
     }
-
-    const notifs = db.getNotifications(currentUser.id);
-    setNotifications(notifs);
   };
 
   const handleFileChange = (e) => {
@@ -144,7 +154,7 @@ export default function EmployeeDashboard({ onRefreshNotifs }) {
         });
       }
 
-      db.addExpense({
+      await db.addExpense({
         employeeId: currentUser.id,
         date,
         categoryId,
@@ -154,11 +164,11 @@ export default function EmployeeDashboard({ onRefreshNotifs }) {
         attachmentId
       });
 
-      db.addLog(currentUser.id, 'Submit Expense', `Submitted expense for ${amount} BDT: "${description}"`);
+      await db.addLog(currentUser.id, 'Submit Expense', `Submitted expense for ${amount} BDT: "${description}"`);
       showToast('Expense submitted successfully!', 'success');
       resetForm();
       setIsSubmitOpen(false);
-      loadDashboardData();
+      await loadDashboardData();
     } catch (err) {
       console.error(err);
       showToast('Failed to save file attachment. Try again.', 'error');
@@ -223,7 +233,7 @@ export default function EmployeeDashboard({ onRefreshNotifs }) {
         attachmentId = null;
       }
 
-      db.updateExpense(selectedExpense.id, {
+      await db.updateExpense(selectedExpense.id, {
         date,
         categoryId,
         description,
@@ -232,11 +242,11 @@ export default function EmployeeDashboard({ onRefreshNotifs }) {
         attachmentId
       });
 
-      db.addLog(currentUser.id, 'Edit Expense', `Modified pending expense "${description}"`);
+      await db.addLog(currentUser.id, 'Edit Expense', `Modified pending expense "${description}"`);
       showToast('Expense updated successfully!', 'success');
       resetForm();
       setIsEditOpen(false);
-      loadDashboardData();
+      await loadDashboardData();
     } catch (err) {
       console.error(err);
       showToast('Failed to update expense. Try again.', 'error');
@@ -253,10 +263,10 @@ export default function EmployeeDashboard({ onRefreshNotifs }) {
       if (expense.attachmentId) {
         await attachmentStore.deleteAttachment(expense.attachmentId);
       }
-      db.deleteExpense(expense.id);
-      db.addLog(currentUser.id, 'Delete Expense', `Deleted pending expense "${expense.description}"`);
+      await db.deleteExpense(expense.id);
+      await db.addLog(currentUser.id, 'Delete Expense', `Deleted pending expense "${expense.description}"`);
       showToast('Expense deleted successfully.', 'info');
-      loadDashboardData();
+      await loadDashboardData();
     }
   };
 
@@ -274,10 +284,10 @@ export default function EmployeeDashboard({ onRefreshNotifs }) {
     }
   };
 
-  const markAllNotifications = () => {
-    db.markNotificationsAsRead(currentUser.id);
+  const markAllNotifications = async () => {
+    await db.markNotificationsAsRead(currentUser.id);
     showToast('Notifications marked as read.', 'info');
-    loadDashboardData();
+    await loadDashboardData();
     if (onRefreshNotifs) onRefreshNotifs();
   };
 
@@ -293,8 +303,7 @@ export default function EmployeeDashboard({ onRefreshNotifs }) {
   };
 
   const getCategoryName = (id) => {
-    const all = db.getCategories();
-    const cat = all.find(c => c.id === id);
+    const cat = allCategoriesLookup.find(c => c.id === id);
     return cat ? cat.name : 'Unknown';
   };
 

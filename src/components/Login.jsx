@@ -17,16 +17,13 @@ export default function Login({ onLogin }) {
     }
 
     setLoading(true);
-    // Simulate minor network delay for premium feel (spinner)
-    setTimeout(() => {
-      try {
-        onLogin(email, password);
-      } catch (err) {
-        showToast(err.message, 'error');
-      } finally {
-        setLoading(false);
-      }
-    }, 600);
+    try {
+      await onLogin(email, password);
+    } catch (err) {
+      // Errors are handled in App.jsx and shown via toast
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleQuickLogin = (role) => {

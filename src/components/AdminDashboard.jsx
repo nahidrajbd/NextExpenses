@@ -32,13 +32,16 @@ export default function AdminDashboard({ onViewChange }) {
     loadDashboardStats();
   }, []);
 
-  const loadDashboardStats = () => {
-    const expenses = db.getExpenses();
-    const payments = db.getPayments();
-    const categories = db.getCategories();
-    const ledgerData = db.getEmployeeLedger();
-    
-    setLedger(ledgerData);
+  const loadDashboardStats = async () => {
+    try {
+      const [expenses, payments, categories, ledgerData] = await Promise.all([
+        db.getExpenses(),
+        db.getPayments(),
+        db.getCategories(),
+        db.getEmployeeLedger()
+      ]);
+      
+      setLedger(ledgerData);
 
     const todayStr = new Date().toISOString().split('T')[0];
     const currentYear = new Date().getFullYear();
@@ -105,6 +108,9 @@ export default function AdminDashboard({ onViewChange }) {
     }).sort((a, b) => b.amount - a.amount);
 
     setCategoryBreakdown(breakdown);
+    } catch (err) {
+      console.error("Failed to load dashboard stats", err);
+    }
   };
 
   const formatBDT = (amount) => {

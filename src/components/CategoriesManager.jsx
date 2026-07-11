@@ -17,11 +17,16 @@ export default function CategoriesManager() {
     loadCategories();
   }, []);
 
-  const loadCategories = () => {
-    setCategories(db.getCategories());
+  const loadCategories = async () => {
+    try {
+      const cats = await db.getCategories();
+      setCategories(cats);
+    } catch (e) {
+      console.error("Failed to load categories", e);
+    }
   };
 
-  const handleCreate = (e) => {
+  const handleCreate = async (e) => {
     e.preventDefault();
     if (!newCatName.trim()) {
       showToast('Category name cannot be empty.', 'error');
@@ -36,11 +41,15 @@ export default function CategoriesManager() {
       return;
     }
 
-    db.addCategory(newCatName);
-    db.addLog(currentUser.id, 'Create Category', `Created expense category: "${newCatName.trim()}"`);
-    showToast('Category added successfully!', 'success');
-    setNewCatName('');
-    loadCategories();
+    try {
+      await db.addCategory(newCatName);
+      await db.addLog(currentUser.id, 'Create Category', `Created expense category: "${newCatName.trim()}"`);
+      showToast('Category added successfully!', 'success');
+      setNewCatName('');
+      await loadCategories();
+    } catch (err) {
+      showToast('Failed to add category.', 'error');
+    }
   };
 
   const startEdit = (cat) => {
@@ -54,7 +63,7 @@ export default function CategoriesManager() {
     setEditingName('');
   };
 
-  const handleSaveEdit = (e) => {
+  const handleSaveEdit = async (e) => {
     e.preventDefault();
     if (!editingName.trim()) {
       showToast('Category name cannot be empty.', 'error');
@@ -69,28 +78,36 @@ export default function CategoriesManager() {
       return;
     }
 
-    db.updateCategory(editingId, editingName, editingActive);
-    db.addLog(
-      currentUser.id,
-      'Update Category',
-      `Updated category ID ${editingId} name to "${editingName.trim()}" (Status: ${editingActive ? 'Active' : 'Inactive'})`
-    );
+    try {
+      await db.updateCategory(editingId, editingName, editingActive);
+      await db.addLog(
+        currentUser.id,
+        'Update Category',
+        `Updated category ID ${editingId} name to "${editingName.trim()}" (Status: ${editingActive ? 'Active' : 'Inactive'})`
+      );
 
-    showToast('Category updated successfully!', 'success');
-    setEditingId(null);
-    loadCategories();
+      showToast('Category updated successfully!', 'success');
+      setEditingId(null);
+      await loadCategories();
+    } catch (err) {
+      showToast('Failed to update category.', 'error');
+    }
   };
 
-  const handleToggleActive = (cat) => {
+  const handleToggleActive = async (cat) => {
     const nextState = !cat.active;
-    db.updateCategory(cat.id, cat.name, nextState);
-    db.addLog(
-      currentUser.id,
-      'Toggle Category Status',
-      `${nextState ? 'Activated' : 'Deactivated'} category "${cat.name}"`
-    );
-    showToast(`Category ${nextState ? 'enabled' : 'disabled'}.`, 'info');
-    loadCategories();
+    try {
+      await db.updateCategory(cat.id, cat.name, nextState);
+      await db.addLog(
+        currentUser.id,
+        'Toggle Category Status',
+        `${nextState ? 'Activated' : 'Deactivated'} category "${cat.name}"`
+      );
+      showToast(`Category ${nextState ? 'enabled' : 'disabled'}.`, 'info');
+      await loadCategories();
+    } catch (err) {
+      showToast('Failed to update category status.', 'error');
+    }
   };
 
   return (

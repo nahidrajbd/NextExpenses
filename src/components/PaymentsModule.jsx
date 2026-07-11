@@ -45,32 +45,44 @@ export default function PaymentsModule() {
     loadPaymentsHistory();
   }, [selectedEmpId]);
 
-  const loadEmployees = () => {
-    const list = db.getEmployees();
-    setEmployees(list);
-    if (list.length > 0 && !selectedEmpId) {
-      setSelectedEmpId(list[0].id);
+  const loadEmployees = async () => {
+    try {
+      const list = await db.getEmployees();
+      setEmployees(list);
+      if (list.length > 0 && !selectedEmpId) {
+        setSelectedEmpId(list[0].id);
+      }
+    } catch (e) {
+      console.error("Failed to load employees list", e);
     }
   };
 
-  const calculateBalances = (empId) => {
-    const summary = db.getSingleEmployeeSummary(empId);
-    setTotals({
-      totalApproved: summary.totalApproved,
-      totalPaid: summary.totalPaid,
-      currentDue: summary.balanceDue
-    });
-  };
-
-  const loadPaymentsHistory = () => {
-    let history = db.getPayments();
-    if (selectedEmpId && selectedEmpId !== 'All') {
-      history = history.filter(p => p.employeeId === selectedEmpId);
+  const calculateBalances = async (empId) => {
+    try {
+      const summary = await db.getSingleEmployeeSummary(empId);
+      setTotals({
+        totalApproved: summary.totalApproved,
+        totalPaid: summary.totalPaid,
+        currentDue: summary.balanceDue
+      });
+    } catch (e) {
+      console.error("Failed to calculate balances", e);
     }
-    setPaymentsHistory(history.sort((a, b) => new Date(b.date) - new Date(a.date)));
   };
 
-  const handleSubmitPayment = (e) => {
+  const loadPaymentsHistory = async () => {
+    try {
+      let history = await db.getPayments();
+      if (selectedEmpId && selectedEmpId !== 'All') {
+        history = history.filter(p => p.employeeId === selectedEmpId);
+      }
+      setPaymentsHistory(history.sort((a, b) => new Date(b.date) - new Date(a.date)));
+    } catch (e) {
+      console.error("Failed to load payments history", e);
+    }
+  };
+
+  const handleSubmitPayment = async (e) => {
     e.preventDefault();
     if (!selectedEmpId || !amount || !date) {
       showToast('Please fill in all required fields.', 'error');
@@ -92,37 +104,40 @@ export default function PaymentsModule() {
     const emp = employees.find(u => u.id === selectedEmpId);
     const empName = emp ? emp.name : 'Employee';
 
-    // Record Payment
-    db.addPayment({
-      employeeId: selectedEmpId,
-      amount: payAmount,
-      date,
-      notes
-    }, currentUser.name);
+    try {
+      // Record Payment
+      await db.addPayment({
+        employeeId: selectedEmpId,
+        amount: payAmount,
+        date,
+        notes
+      }, currentUser.name);
 
-    // Audit Log
-    db.addLog(
-      currentUser.id,
-      'Record Payment',
-      `Recorded payment of ${payAmount} BDT to ${empName} (Notes: ${notes || 'None'})`
-    );
+      // Audit Log
+      await db.addLog(
+        currentUser.id,
+        'Record Payment',
+        `Recorded payment of ${payAmount} BDT to ${empName} (Notes: ${notes || 'None'})`
+      );
 
-    // Notification to Employee
-    db.addNotification(
-      selectedEmpId,
-      'Payment Recorded',
-      `A payment of ${formatBDT(payAmount)} has been recorded for you on ${date} by Admin.`
-    );
+      // Notification to Employee
+      await db.addNotification(
+        selectedEmpId,
+        'Payment Recorded',
+        `A payment of ${formatBDT(payAmount)} has been recorded for you on ${date} by Admin.`
+      );
 
-    showToast(`Payment of ${formatBDT(payAmount)} registered successfully.`, 'success');
-    
-    // Reset Form
-    setAmount('');
-    setNotes('');
-    
-    // Reload state
-    calculateBalances(selectedEmpId);
-    loadPaymentsHistory();
+      showToast(`Payment of ${formatBDT(payAmount)} registered successfully.`, 'success');
+      
+      // Reset Form
+      setAmount('');
+      setNotes('');
+      // Reload state
+      await calculateBalances(selectedEmpId);
+      await loadPaymentsHistory();
+    } catch (err) {
+      showToast('Failed to record payment.', 'error');
+    }
   };
 
   const getEmployeeName = (id) => {

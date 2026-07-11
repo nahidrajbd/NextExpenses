@@ -1,5 +1,7 @@
 import React, { useState, useContext } from 'react';
 import { db } from '../db';
+import { auth } from '../firebase';
+import { updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { AuthContext, ToastContext } from '../App';
 import { User, Calendar, Phone, Mail, ShieldAlert, KeyRound } from 'lucide-react';
 
@@ -12,7 +14,7 @@ export default function Profile() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleChangePassword = (e) => {
+  const handleChangePassword = async (e) => {
     e.preventDefault();
     if (!oldPassword || !newPassword || !confirmPassword) {
       showToast('Please fill in all password fields.', 'error');
@@ -24,36 +26,46 @@ export default function Profile() {
       return;
     }
 
-    if (newPassword.length < 4) {
-      showToast('New password should be at least 4 characters long.', 'error');
+    if (newPassword.length < 6) {
+      showToast('New password should be at least 6 characters long.', 'error');
       return;
     }
 
     setLoading(true);
-    setTimeout(() => {
-      try {
-        const hashedOld = db.hashPassword(oldPassword);
-        if (currentUser.passwordHash !== hashedOld) {
-          showToast('Current password is incorrect.', 'error');
-          setLoading(false);
-          return;
-        }
-
-        db.updateUser(currentUser.id, { password: newPassword });
-        db.addLog(currentUser.id, 'Change Password', `Updated password for ${currentUser.name}`);
+    try {
+      const user = auth.currentUser;
+      if (user && user.email) {
+        // Re-authenticate user first
+        const credential = EmailAuthProvider.credential(user.email, oldPassword);
+        await reauthenticateWithCredential(user, credential);
+        
+        // Update password in Firebase Auth
+        await updatePassword(user, newPassword);
+        
+        // Audit log
+        await db.addLog(currentUser.id, 'Change Password', `Updated password for ${currentUser.name}`);
         showToast('Password updated successfully!', 'success');
         
         // Reset form
         setOldPassword('');
         setNewPassword('');
         setConfirmPassword('');
-        refreshUser();
-      } catch (err) {
-        showToast('Error updating password.', 'error');
-      } finally {
-        setLoading(false);
+        await refreshUser();
+      } else {
+        showToast('No active authenticated session.', 'error');
       }
-    }, 500);
+    } catch (err) {
+      console.error(err);
+      let friendlyMessage = 'Error updating password.';
+      if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        friendlyMessage = 'Current password is incorrect.';
+      } else if (err.code === 'auth/requires-recent-login') {
+        friendlyMessage = 'Security sensitive action. Please log out and log back in to retry.';
+      }
+      showToast(friendlyMessage, 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

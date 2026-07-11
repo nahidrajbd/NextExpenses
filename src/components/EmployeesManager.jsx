@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { db } from '../db';
 import { AuthContext, ToastContext } from '../App';
-import { Users, Plus, Edit, X, UserCheck, UserX, Key, Mail, Phone, Calendar } from 'lucide-react';
+import { Users, Plus, Edit, X, UserCheck, UserX, Key, Mail, Phone, Calendar, Trash } from 'lucide-react';
 
 export default function EmployeesManager() {
   const { currentUser } = useContext(AuthContext);
@@ -22,6 +22,7 @@ export default function EmployeesManager() {
   const [password, setPassword] = useState('');
   const [status, setStatus] = useState('Active');
   const [dateJoined, setDateJoined] = useState(new Date().toISOString().split('T')[0]);
+  const [role, setRole] = useState('employee');
 
   // Edit / Reset password states
   const [newPassword, setNewPassword] = useState('');
@@ -30,44 +31,58 @@ export default function EmployeesManager() {
     loadData();
   }, []);
 
-  const loadData = () => {
-    setEmployees(db.getEmployees());
-    setLedger(db.getEmployeeLedger());
+  const loadData = async () => {
+    try {
+      const [allUsers, ledgerData] = await Promise.all([
+        db.getUsers(),
+        db.getEmployeeLedger()
+      ]);
+      setEmployees(allUsers);
+      setLedger(ledgerData);
+    } catch (e) {
+      console.error("Failed to load employee data", e);
+      showToast('Failed to load employee list.', 'error');
+    }
   };
 
-  const handleAddEmployee = (e) => {
+  const handleAddEmployee = async (e) => {
     e.preventDefault();
     if (!name || !email || !phone || !password) {
       showToast('Please fill in all required fields.', 'error');
       return;
     }
 
-    // Check if email already exists
-    const users = db.getUsers();
-    if (users.some(u => u.email === email.toLowerCase().trim())) {
-      showToast('A user with this email already exists.', 'error');
-      return;
+    try {
+      // Check if email already exists
+      const users = await db.getUsers();
+      if (users.some(u => u.email === email.toLowerCase().trim())) {
+        showToast('A user with this email already exists.', 'error');
+        return;
+      }
+
+      await db.addUser({
+        name,
+        email,
+        phone,
+        password,
+        status,
+        role,
+        dateJoined
+      });
+
+      await db.addLog(
+        currentUser.id,
+        'Create Employee',
+        `Registered new user account (${role}): "${name}" (${email})`
+      );
+
+      showToast('User account created successfully!', 'success');
+      setIsAddOpen(false);
+      resetForm();
+      await loadData();
+    } catch (err) {
+      showToast('Failed to register employee account.', 'error');
     }
-
-    db.addUser({
-      name,
-      email,
-      phone,
-      password,
-      status,
-      dateJoined
-    });
-
-    db.addLog(
-      currentUser.id,
-      'Create Employee',
-      `Registered new employee account: "${name}" (${email})`
-    );
-
-    showToast('Employee account created successfully!', 'success');
-    setIsAddOpen(false);
-    resetForm();
-    loadData();
   };
 
   const openEditModal = (emp) => {
@@ -77,56 +92,88 @@ export default function EmployeesManager() {
     setPhone(emp.phone);
     setStatus(emp.status);
     setDateJoined(emp.dateJoined);
+    setRole(emp.role || 'employee');
     setNewPassword('');
     setIsEditOpen(true);
   };
 
-  const handleEditEmployee = (e) => {
+  const handleEditEmployee = async (e) => {
     e.preventDefault();
     if (!selectedEmp) return;
 
-    // Check if email already taken by someone else
-    const users = db.getUsers();
-    if (users.some(u => u.id !== selectedEmp.id && u.email === email.toLowerCase().trim())) {
-      showToast('Another user with this email already exists.', 'error');
+    try {
+      // Check if email already taken by someone else
+      const users = await db.getUsers();
+      if (users.some(u => u.id !== selectedEmp.id && u.email === email.toLowerCase().trim())) {
+        showToast('Another user with this email already exists.', 'error');
+        return;
+      }
+
+      const updatedData = {
+        name,
+        email,
+        phone,
+        status,
+        role,
+        dateJoined
+      };
+
+      if (newPassword.trim()) {
+        updatedData.password = newPassword.trim();
+      }
+
+      await db.updateUser(selectedEmp.id, updatedData);
+      await db.addLog(
+        currentUser.id,
+        'Update Employee',
+        `Modified employee account details for "${name}"`
+      );
+
+      showToast('Employee details updated successfully.', 'success');
+      setIsEditOpen(false);
+      resetForm();
+      await loadData();
+    } catch (err) {
+      showToast('Failed to update employee details.', 'error');
+    }
+  };
+
+  const toggleStatus = async (emp) => {
+    const nextStatus = emp.status === 'Active' ? 'Inactive' : 'Active';
+    try {
+      await db.updateUser(emp.id, { status: nextStatus });
+      await db.addLog(
+        currentUser.id,
+        'Toggle Employee Status',
+        `Set status of employee "${emp.name}" to ${nextStatus}`
+      );
+      showToast(`Employee ${emp.name} is now ${nextStatus}.`, 'info');
+      await loadData();
+    } catch (e) {
+      showToast('Failed to update status.', 'error');
+    }
+  };
+
+  const handleDeleteEmployee = async (emp) => {
+    if (currentUser.id === emp.id) {
+      showToast('You cannot delete your own admin account!', 'error');
       return;
     }
 
-    const updatedData = {
-      name,
-      email,
-      phone,
-      status,
-      dateJoined
-    };
-
-    if (newPassword.trim()) {
-      updatedData.password = newPassword.trim();
+    if (confirm(`Are you sure you want to delete ${emp.name}'s account? This will permanently delete their profile document from Firestore. Note: If they have login credentials, you will still need to manually delete their Auth account in the Firebase Console.`)) {
+      try {
+        await db.deleteUser(emp.id);
+        await db.addLog(
+          currentUser.id,
+          'Delete Employee',
+          `Deleted user account profile: "${emp.name}" (${emp.email})`
+        );
+        showToast(`User ${emp.name} deleted successfully.`, 'success');
+        await loadData();
+      } catch (err) {
+        showToast('Failed to delete user profile.', 'error');
+      }
     }
-
-    db.updateUser(selectedEmp.id, updatedData);
-    db.addLog(
-      currentUser.id,
-      'Update Employee',
-      `Modified employee account details for "${name}"`
-    );
-
-    showToast('Employee details updated successfully.', 'success');
-    setIsEditOpen(false);
-    resetForm();
-    loadData();
-  };
-
-  const toggleStatus = (emp) => {
-    const nextStatus = emp.status === 'Active' ? 'Inactive' : 'Active';
-    db.updateUser(emp.id, { status: nextStatus });
-    db.addLog(
-      currentUser.id,
-      'Toggle Employee Status',
-      `Set status of employee "${emp.name}" to ${nextStatus}`
-    );
-    showToast(`Employee ${emp.name} is now ${nextStatus}.`, 'info');
-    loadData();
   };
 
   const resetForm = () => {
@@ -136,6 +183,7 @@ export default function EmployeesManager() {
     setPhone('');
     setPassword('');
     setStatus('Active');
+    setRole('employee');
     setDateJoined(new Date().toISOString().split('T')[0]);
     setNewPassword('');
   };
@@ -181,18 +229,49 @@ export default function EmployeesManager() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                   <div>
                     <h3 style={{ fontSize: '1.15rem' }}>{emp.name}</h3>
-                    <span className="badge" style={{
-                      backgroundColor: 'var(--bg-primary)',
-                      color: 'var(--text-secondary)',
-                      fontSize: '0.7rem',
-                      marginTop: '0.25rem'
-                    }}>
-                      Joined: {emp.dateJoined}
-                    </span>
+                    <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
+                      <span className="badge" style={{
+                        backgroundColor: 'var(--bg-primary)',
+                        color: 'var(--text-secondary)',
+                        fontSize: '0.7rem'
+                      }}>
+                        Joined: {emp.dateJoined}
+                      </span>
+                      <span className="badge" style={{
+                        backgroundColor: 'var(--bg-primary)',
+                        color: emp.role === 'admin' ? 'var(--primary)' : 'var(--info)',
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        textTransform: 'capitalize'
+                      }}>
+                        {emp.role || 'employee'}
+                      </span>
+                    </div>
                   </div>
-                  <span className={`badge ${isActive ? 'badge-approved' : 'badge-rejected'}`}>
-                    {emp.status}
-                  </span>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+                    <span className={`badge ${isActive ? 'badge-approved' : 'badge-rejected'}`}>
+                      {emp.status}
+                    </span>
+                    <button
+                      onClick={() => handleDeleteEmployee(emp)}
+                      className="btn-icon"
+                      style={{
+                        color: 'var(--danger)',
+                        padding: '0.25rem',
+                        borderRadius: '6px',
+                        backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                        border: 'none',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 0.2s'
+                      }}
+                      title="Delete profile document"
+                    >
+                      <Trash size={15} />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Body Details */}
@@ -341,16 +420,29 @@ export default function EmployeesManager() {
                   </div>
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">Account Status</label>
-                  <select
-                    className="form-control"
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value)}
-                  >
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                  </select>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Account Status</label>
+                    <select
+                      className="form-control"
+                      value={status}
+                      onChange={(e) => setStatus(e.target.value)}
+                    >
+                      <option value="Active">Active</option>
+                      <option value="Inactive">Inactive</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">System Role</label>
+                    <select
+                      className="form-control"
+                      value={role}
+                      onChange={(e) => setRole(e.target.value)}
+                    >
+                      <option value="employee">Employee</option>
+                      <option value="admin">System Admin</option>
+                    </select>
+                  </div>
                 </div>
               </div>
               <div className="modal-footer">
@@ -435,16 +527,29 @@ export default function EmployeesManager() {
                   </div>
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">Account Status</label>
-                  <select
-                    className="form-control"
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value)}
-                  >
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                  </select>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Account Status</label>
+                    <select
+                      className="form-control"
+                      value={status}
+                      onChange={(e) => setStatus(e.target.value)}
+                    >
+                      <option value="Active">Active</option>
+                      <option value="Inactive">Inactive</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">System Role</label>
+                    <select
+                      className="form-control"
+                      value={role}
+                      onChange={(e) => setRole(e.target.value)}
+                    >
+                      <option value="employee">Employee</option>
+                      <option value="admin">System Admin</option>
+                    </select>
+                  </div>
                 </div>
               </div>
               <div className="modal-footer">

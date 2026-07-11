@@ -1,5 +1,8 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { initDB, db } from './db';
+import { auth, db as firestore } from './firebase';
+import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 import Login from './components/Login';
 import Sidebar from './components/Sidebar';
 import EmployeeDashboard from './components/EmployeeDashboard';
@@ -22,24 +25,40 @@ export default function App() {
   const [darkMode, setDarkMode] = useState(false);
   const [toasts, setToasts] = useState([]);
   const [notificationsCount, setNotificationsCount] = useState(0);
+  const [loadingSession, setLoadingSession] = useState(true);
 
   // Initialize DB and sessions
   useEffect(() => {
     initDB();
-    const storedUser = localStorage.getItem('ne_current_user');
-    if (storedUser) {
-      try {
-        const parsed = JSON.parse(storedUser);
-        setCurrentUser(parsed);
-        // Sync notifications
-        if (parsed.role === 'employee') {
-          const notifs = db.getNotifications(parsed.id);
-          setNotificationsCount(notifs.filter(n => !n.read).length);
+    
+    // Subscribe to Firebase Authentication state changes
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setLoadingSession(true);
+      if (firebaseUser) {
+        try {
+          const userSnap = await getDoc(doc(firestore, 'users', firebaseUser.uid));
+          if (userSnap.exists()) {
+            const userData = userSnap.data();
+            setCurrentUser(userData);
+            
+            // Sync notifications for employees
+            if (userData.role === 'employee') {
+              const notifs = await db.getNotifications(userData.id);
+              setNotificationsCount(notifs.filter(n => !n.read).length);
+            }
+          } else {
+            console.error('No matching user document found in Firestore.');
+            setCurrentUser(null);
+          }
+        } catch (e) {
+          console.error('Session restore failed', e);
+          setCurrentUser(null);
         }
-      } catch (e) {
-        console.error('Session restore failed', e);
+      } else {
+        setCurrentUser(null);
       }
-    }
+      setLoadingSession(false);
+    });
 
     const storedTheme = localStorage.getItem('ne_theme');
     if (storedTheme === 'dark' || (!storedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -49,6 +68,8 @@ export default function App() {
       setDarkMode(false);
       document.body.classList.remove('dark');
     }
+
+    return () => unsubscribe();
   }, []);
 
   const toggleTheme = () => {
@@ -64,43 +85,59 @@ export default function App() {
     });
   };
 
-  const login = (email, password) => {
-    const users = db.getUsers();
-    const user = users.find(u => u.email === email.toLowerCase().trim());
-    if (!user) {
-      throw new Error('Invalid email or password.');
-    }
+  const login = async (email, password) => {
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const firebaseUser = userCredential.user;
+      
+      const userSnap = await getDoc(doc(firestore, 'users', firebaseUser.uid));
+      if (!userSnap.exists()) {
+        await signOut(auth);
+        throw new Error('User record not found in system database.');
+      }
 
-    const hashed = db.hashPassword(password);
-    if (user.passwordHash !== hashed) {
-      throw new Error('Invalid email or password.');
-    }
+      const userData = userSnap.data();
+      if (userData.status !== 'Active') {
+        await signOut(auth);
+        throw new Error('Your account is currently disabled. Please contact the Admin.');
+      }
 
-    if (user.status !== 'Active') {
-      throw new Error('Your account is currently disabled. Please contact the Admin.');
+      setCurrentUser(userData);
+      setCurrentView('dashboard');
+      
+      // Notifications count for employees
+      if (userData.role === 'employee') {
+        const notifs = await db.getNotifications(userData.id);
+        setNotificationsCount(notifs.filter(n => !n.read).length);
+      }
+      
+      showToast(`Welcome back, ${userData.name}!`, 'success');
+      await db.addLog(userData.id, 'Login', `${userData.name} logged in successfully.`);
+    } catch (err) {
+      let friendlyMessage = err.message;
+      if (
+        err.code === 'auth/invalid-credential' || 
+        err.code === 'auth/user-not-found' || 
+        err.code === 'auth/wrong-password'
+      ) {
+        friendlyMessage = 'Invalid email or password.';
+      }
+      showToast(friendlyMessage, 'error');
+      throw err; // Propagate to login component for loading resets
     }
-
-    setCurrentUser(user);
-    setCurrentView('dashboard');
-    localStorage.setItem('ne_current_user', JSON.stringify(user));
-    
-    // Notifications count for employees
-    if (user.role === 'employee') {
-      const notifs = db.getNotifications(user.id);
-      setNotificationsCount(notifs.filter(n => !n.read).length);
-    }
-    
-    showToast(`Welcome back, ${user.name}!`, 'success');
-    db.addLog(user.id, 'Login', `${user.name} logged in successfully.`);
   };
 
-  const logout = () => {
+  const logout = async () => {
     if (currentUser) {
-      db.addLog(currentUser.id, 'Logout', `${currentUser.name} logged out.`);
+      try {
+        await db.addLog(currentUser.id, 'Logout', `${currentUser.name} logged out.`);
+      } catch (e) {
+        console.warn("Could not log sign-out audit trail.", e);
+      }
     }
+    await signOut(auth);
     setCurrentUser(null);
     setCurrentView('dashboard');
-    localStorage.removeItem('ne_current_user');
     showToast('Logged out successfully.', 'info');
   };
 
@@ -112,9 +149,9 @@ export default function App() {
     }, 4000);
   };
 
-  const refreshNotificationCount = () => {
+  const refreshNotificationCount = async () => {
     if (currentUser && currentUser.role === 'employee') {
-      const notifs = db.getNotifications(currentUser.id);
+      const notifs = await db.getNotifications(currentUser.id);
       setNotificationsCount(notifs.filter(n => !n.read).length);
     }
   };
@@ -157,6 +194,33 @@ export default function App() {
     }
   };
 
+  if (loadingSession) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)',
+        color: '#ffffff',
+        fontFamily: 'Inter, sans-serif'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            border: '3px solid rgba(255, 255, 255, 0.1)',
+            borderTopColor: '#6366f1',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 1rem'
+          }} />
+          <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Restoring secure session...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!currentUser) {
     return (
       <ToastContext.Provider value={{ showToast }}>
@@ -167,11 +231,16 @@ export default function App() {
   }
 
   return (
-    <AuthContext.Provider value={{ currentUser, logout, refreshUser: () => {
-      const fresh = db.getUsers().find(u => u.id === currentUser.id);
-      setCurrentUser(fresh);
-      localStorage.setItem('ne_current_user', JSON.stringify(fresh));
-    } }}>
+    <AuthContext.Provider value={{ 
+      currentUser, 
+      logout, 
+      refreshUser: async () => {
+        const freshDoc = await getDoc(doc(firestore, 'users', currentUser.id));
+        if (freshDoc.exists()) {
+          setCurrentUser(freshDoc.data());
+        }
+      } 
+    }}>
       <ThemeContext.Provider value={{ darkMode, toggleTheme }}>
         <ToastContext.Provider value={{ showToast }}>
           <div className="app-container">

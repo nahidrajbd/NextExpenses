@@ -22,6 +22,7 @@ export default function ExpensesList({ employeeId = null }) {
   const [expenses, setExpenses] = useState([]);
   const [categories, setCategories] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [usersLookup, setUsersLookup] = useState([]);
 
   // Search & Filter state
   const [search, setSearch] = useState('');
@@ -47,13 +48,28 @@ export default function ExpensesList({ employeeId = null }) {
     loadExpenses();
   }, [employeeId, statusFilter, categoryFilter, employeeFilter, dateRangeFilter, customStartDate, customEndDate, search]);
 
-  const loadFilterData = () => {
-    setCategories(db.getCategories());
-    setEmployees(db.getEmployees());
+  const loadFilterData = async () => {
+    try {
+      const [cats, users] = await Promise.all([
+        db.getCategories(),
+        db.getUsers()
+      ]);
+      setCategories(cats);
+      setUsersLookup(users);
+      setEmployees(users.filter(u => u.role === 'employee'));
+    } catch (e) {
+      console.error("Failed to load filter data", e);
+    }
   };
 
-  const loadExpenses = () => {
-    let list = db.getExpenses();
+  const loadExpenses = async () => {
+    let list = [];
+    try {
+      list = await db.getExpenses();
+    } catch (e) {
+      console.error("Failed to load expenses", e);
+      return;
+    }
 
     // 1. Employee Isolation (If employee views, they can only see their own)
     if (currentUser.role === 'employee') {
@@ -144,7 +160,7 @@ export default function ExpensesList({ employeeId = null }) {
   };
 
   const getEmployeeName = (id) => {
-    const emp = db.getUsers().find(u => u.id === id);
+    const emp = usersLookup.find(u => u.id === id);
     return emp ? emp.name : 'Unknown';
   };
 
@@ -153,22 +169,26 @@ export default function ExpensesList({ employeeId = null }) {
     return cat ? cat.name : 'Unknown';
   };
 
-  const handleApprove = (expense) => {
+  const handleApprove = async (expense) => {
     if (expense.status !== 'Pending') return;
 
     if (confirm(`Approve this claim for ${formatBDT(expense.amount)} submitted by ${getEmployeeName(expense.employeeId)}?`)) {
-      db.updateExpense(expense.id, { status: 'Approved' });
-      db.addLog(currentUser.id, 'Approve Expense', `Approved expense ${expense.id} of ${expense.amount} BDT for ${getEmployeeName(expense.employeeId)}`);
-      
-      // Notify employee
-      db.addNotification(
-        expense.employeeId,
-        'Expense Approved',
-        `Your expense claim for "${expense.description}" (${formatBDT(expense.amount)}) was approved.`
-      );
+      try {
+        await db.updateExpense(expense.id, { status: 'Approved' });
+        await db.addLog(currentUser.id, 'Approve Expense', `Approved expense ${expense.id} of ${expense.amount} BDT for ${getEmployeeName(expense.employeeId)}`);
+        
+        // Notify employee
+        await db.addNotification(
+          expense.employeeId,
+          'Expense Approved',
+          `Your expense claim for "${expense.description}" (${formatBDT(expense.amount)}) was approved.`
+        );
 
-      showToast('Expense claim approved.', 'success');
-      loadExpenses();
+        showToast('Expense claim approved.', 'success');
+        await loadExpenses();
+      } catch (e) {
+        showToast('Failed to approve expense claim.', 'error');
+      }
     }
   };
 
@@ -178,37 +198,42 @@ export default function ExpensesList({ employeeId = null }) {
     setIsRejectOpen(true);
   };
 
-  const handleRejectConfirm = (e) => {
+  const handleRejectConfirm = async (e) => {
     e.preventDefault();
     if (!rejectComment.trim()) {
       showToast('Please provide a reason for rejection.', 'error');
       return;
     }
 
-    const expense = db.getExpenses().find(ex => ex.id === rejectTargetId);
-    if (!expense) return;
+    try {
+      const allExps = await db.getExpenses();
+      const expense = allExps.find(ex => ex.id === rejectTargetId);
+      if (!expense) return;
 
-    db.updateExpense(expense.id, {
-      status: 'Rejected',
-      rejectionComment: rejectComment.trim()
-    });
+      await db.updateExpense(expense.id, {
+        status: 'Rejected',
+        rejectionComment: rejectComment.trim()
+      });
 
-    db.addLog(
-      currentUser.id,
-      'Reject Expense',
-      `Rejected expense ${expense.id} of ${expense.amount} BDT for ${getEmployeeName(expense.employeeId)}. Reason: ${rejectComment.trim()}`
-    );
+      await db.addLog(
+        currentUser.id,
+        'Reject Expense',
+        `Rejected expense ${expense.id} of ${expense.amount} BDT for ${getEmployeeName(expense.employeeId)}. Reason: ${rejectComment.trim()}`
+      );
 
-    // Notify employee
-    db.addNotification(
-      expense.employeeId,
-      'Expense Rejected',
-      `Your expense claim for "${expense.description}" (${formatBDT(expense.amount)}) was rejected. Reason: ${rejectComment.trim()}`
-    );
+      // Notify employee
+      await db.addNotification(
+        expense.employeeId,
+        'Expense Rejected',
+        `Your expense claim for "${expense.description}" (${formatBDT(expense.amount)}) was rejected. Reason: ${rejectComment.trim()}`
+      );
 
-    showToast('Expense claim rejected.', 'info');
-    setIsRejectOpen(false);
-    loadExpenses();
+      showToast('Expense claim rejected.', 'info');
+      setIsRejectOpen(false);
+      await loadExpenses();
+    } catch (err) {
+      showToast('Failed to reject expense claim.', 'error');
+    }
   };
 
   const handleViewAttachment = async (attachmentId) => {
