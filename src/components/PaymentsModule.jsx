@@ -141,7 +141,7 @@ export default function PaymentsModule() {
   };
 
   const getEmployeeName = (id) => {
-    const emp = db.getUsers().find(u => u.id === id);
+    const emp = employees.find(u => u.id === id);
     return emp ? emp.name : 'Unknown';
   };
 
