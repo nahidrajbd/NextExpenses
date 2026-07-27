@@ -230,7 +230,7 @@ export default function AdminDashboard({ onViewChange }) {
                         <div style={{
                           height: '100%',
                           width: `${item.percentage}%`,
-                          background: `linear-gradient(90deg, ${colors[idx % colors.length]}, var(--info))`,
+                          background: colors[idx % colors.length],
                           borderRadius: '4px'
                         }} />
                       </div>
@@ -269,7 +269,7 @@ export default function AdminDashboard({ onViewChange }) {
                         top: 0,
                         height: '100%',
                         width: `${barWidth}%`,
-                        background: 'linear-gradient(90deg, var(--primary), var(--info))',
+                        background: '#98989A',
                         zIndex: 1,
                         borderRadius: '6px'
                       }} />

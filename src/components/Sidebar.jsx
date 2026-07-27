@@ -48,8 +48,9 @@ export default function Sidebar({ currentView, onViewChange, notificationsCount,
   const navStyles = {
     sidebar: {
       width: '260px',
-      backgroundColor: 'var(--bg-sidebar)',
-      color: '#ffffff',
+      backgroundColor: '#ffffff',
+      borderRight: '1px solid #98989A',
+      color: '#000000',
       display: 'flex',
       flexDirection: 'column',
       padding: '1.5rem',
@@ -65,13 +66,13 @@ export default function Sidebar({ currentView, onViewChange, notificationsCount,
       left: 0,
       width: '100%',
       height: '60px',
-      backgroundColor: 'var(--bg-sidebar)',
-      color: '#ffffff',
+      backgroundColor: '#ffffff',
+      borderBottom: '1px solid #98989A',
+      color: '#000000',
       alignItems: 'center',
       justifyContent: 'space-between',
       padding: '0 1rem',
-      zIndex: 95,
-      boxShadow: 'var(--shadow-sm)'
+      zIndex: 95
     }
   };
 
@@ -80,14 +81,11 @@ export default function Sidebar({ currentView, onViewChange, notificationsCount,
       {/* Mobile Top Bar */}
       <div className="mobile-bar-element" style={navStyles.mobileBar}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Coins size={22} color="#6366f1" />
-          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.1rem' }}>NextExpenses</span>
+          <Coins size={22} color="#98989A" />
+          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.1rem', color: '#000000' }}>NextExpenses</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <button onClick={toggleTheme} className="btn-icon" style={{ color: '#ffffff' }}>
-            {darkMode ? <Sun size={20} /> : <Moon size={20} />}
-          </button>
-          <button onClick={() => setMobileOpen(!mobileOpen)} className="btn-icon" style={{ color: '#ffffff' }}>
+          <button onClick={() => setMobileOpen(!mobileOpen)} className="btn-icon" style={{ color: '#000000' }}>
             {mobileOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
@@ -103,22 +101,22 @@ export default function Sidebar({ currentView, onViewChange, notificationsCount,
         {/* Brand */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2.5rem' }}>
           <div style={{
-            background: 'linear-gradient(135deg, #6366f1, #06b6d4)',
+            background: '#98989A',
             width: '40px',
             height: '40px',
             borderRadius: '10px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 4px 12px rgba(99, 102, 241, 0.2)'
+            boxShadow: 'none'
           }}>
             <Coins size={20} color="#ffffff" />
           </div>
           <div>
-            <h1 style={{ color: '#ffffff', fontSize: '1.25rem', fontFamily: 'var(--font-display)', fontWeight: 800 }}>
+            <h1 style={{ color: '#000000', fontSize: '1.25rem', fontFamily: 'var(--font-display)', fontWeight: 800 }}>
               NextExpenses
             </h1>
-            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+            <span style={{ fontSize: '0.7rem', color: '#98989A', textTransform: 'uppercase', letterSpacing: '1px' }}>
               {currentUser?.role === 'admin' ? 'Admin Portal' : 'Employee Desk'}
             </span>
           </div>
@@ -126,7 +124,8 @@ export default function Sidebar({ currentView, onViewChange, notificationsCount,
 
         {/* User Card */}
         <div style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.05)',
+          backgroundColor: '#f4f4f5',
+          border: '1px solid rgba(152, 152, 154, 0.3)',
           borderRadius: '12px',
           padding: '0.875rem',
           marginBottom: '1.5rem',
@@ -138,7 +137,7 @@ export default function Sidebar({ currentView, onViewChange, notificationsCount,
             width: '40px',
             height: '40px',
             borderRadius: '50px',
-            backgroundColor: currentUser?.role === 'admin' ? 'var(--primary)' : 'var(--info)',
+            backgroundColor: '#98989A',
             color: '#ffffff',
             display: 'flex',
             alignItems: 'center',
@@ -149,10 +148,10 @@ export default function Sidebar({ currentView, onViewChange, notificationsCount,
             {currentUser?.name.charAt(0)}
           </div>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ fontWeight: 600, fontSize: '0.85rem', color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <div style={{ fontWeight: 600, fontSize: '0.85rem', color: '#000000', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {currentUser?.name}
             </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <div style={{ fontSize: '0.75rem', color: '#98989A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {currentUser?.email}
             </div>
           </div>
@@ -175,8 +174,8 @@ export default function Sidebar({ currentView, onViewChange, notificationsCount,
                   padding: '0.75rem 1rem',
                   borderRadius: '10px',
                   border: 'none',
-                  background: isActive ? 'linear-gradient(135deg, var(--primary), var(--primary-hover))' : 'transparent',
-                  color: isActive ? '#ffffff' : 'var(--text-muted)',
+                  background: isActive ? '#98989A' : 'transparent',
+                  color: isActive ? '#ffffff' : '#000000',
                   cursor: 'pointer',
                   textAlign: 'left',
                   fontWeight: 600,
@@ -207,35 +206,12 @@ export default function Sidebar({ currentView, onViewChange, notificationsCount,
 
         {/* Footer actions */}
         <div style={{
-          borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+          borderTop: '1px solid #98989A',
           paddingTop: '1.25rem',
           display: 'flex',
           flexDirection: 'column',
           gap: '0.5rem'
         }}>
-          {/* Light/Dark Toggle */}
-          <button
-            onClick={toggleTheme}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.75rem',
-              width: '100%',
-              padding: '0.75rem 1rem',
-              borderRadius: '10px',
-              border: 'none',
-              background: 'transparent',
-              color: 'var(--text-muted)',
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: '0.9rem'
-            }}
-            className="sidebar-item-hover"
-          >
-            {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-            <span>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>
-          </button>
-
           {/* Log out */}
           <button
             onClick={logout}

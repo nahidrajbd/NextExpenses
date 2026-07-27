@@ -60,29 +60,15 @@ export default function App() {
       setLoadingSession(false);
     });
 
-    const storedTheme = localStorage.getItem('ne_theme');
-    if (storedTheme === 'dark' || (!storedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-      setDarkMode(true);
-      document.body.classList.add('dark');
-    } else {
-      setDarkMode(false);
-      document.body.classList.remove('dark');
-    }
+    setDarkMode(false);
+    document.body.classList.remove('dark');
 
     return () => unsubscribe();
   }, []);
 
   const toggleTheme = () => {
-    setDarkMode(prev => {
-      const next = !prev;
-      localStorage.setItem('ne_theme', next ? 'dark' : 'light');
-      if (next) {
-        document.body.classList.add('dark');
-      } else {
-        document.body.classList.remove('dark');
-      }
-      return next;
-    });
+    setDarkMode(false);
+    document.body.classList.remove('dark');
   };
 
   const login = async (email, password) => {
@@ -201,21 +187,21 @@ export default function App() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)',
-        color: '#ffffff',
+        background: '#ffffff',
+        color: '#000000',
         fontFamily: 'Inter, sans-serif'
       }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{
             width: '40px',
             height: '40px',
-            border: '3px solid rgba(255, 255, 255, 0.1)',
-            borderTopColor: '#6366f1',
+            border: '3px solid rgba(152, 152, 154, 0.2)',
+            borderTopColor: '#98989A',
             borderRadius: '50%',
             animation: 'spin 1s linear infinite',
             margin: '0 auto 1rem'
           }} />
-          <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Restoring secure session...</p>
+          <p style={{ color: '#98989A', fontSize: '0.9rem' }}>Restoring secure session...</p>
         </div>
       </div>
     );

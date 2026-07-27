@@ -118,7 +118,12 @@ export const db = {
       phone: user.phone.trim(),
       role: user.role || 'employee',
       status: user.status || 'Active',
-      dateJoined: user.dateJoined || new Date().toISOString().split('T')[0]
+      dateJoined: user.dateJoined || new Date().toISOString().split('T')[0],
+      emergencyContactName: user.emergencyContactName?.trim() || '',
+      emergencyContactRelation: user.emergencyContactRelation?.trim() || 'Guardian',
+      emergencyContactPhone: user.emergencyContactPhone?.trim() || '',
+      presentAddress: user.presentAddress?.trim() || '',
+      permanentAddress: user.permanentAddress?.trim() || ''
     };
     await setDoc(doc(firestore, 'users', uid), newUser);
     return newUser;

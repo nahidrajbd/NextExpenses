@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { db } from '../db';
 import { AuthContext, ToastContext } from '../App';
-import { Users, Plus, Edit, X, UserCheck, UserX, Key, Mail, Phone, Calendar, Trash } from 'lucide-react';
+import { Users, Plus, Edit, X, UserCheck, UserX, Key, Mail, Phone, Calendar, Trash, HeartHandshake, MapPin } from 'lucide-react';
 
 export default function EmployeesManager() {
   const { currentUser } = useContext(AuthContext);
@@ -23,6 +23,13 @@ export default function EmployeesManager() {
   const [status, setStatus] = useState('Active');
   const [dateJoined, setDateJoined] = useState(new Date().toISOString().split('T')[0]);
   const [role, setRole] = useState('employee');
+
+  // Emergency contact & address states
+  const [emergencyContactName, setEmergencyContactName] = useState('');
+  const [emergencyContactRelation, setEmergencyContactRelation] = useState('Guardian');
+  const [emergencyContactPhone, setEmergencyContactPhone] = useState('');
+  const [presentAddress, setPresentAddress] = useState('');
+  const [permanentAddress, setPermanentAddress] = useState('');
 
   // Edit / Reset password states
   const [newPassword, setNewPassword] = useState('');
@@ -67,7 +74,12 @@ export default function EmployeesManager() {
         password,
         status,
         role,
-        dateJoined
+        dateJoined,
+        emergencyContactName,
+        emergencyContactRelation,
+        emergencyContactPhone,
+        presentAddress,
+        permanentAddress
       });
 
       await db.addLog(
@@ -93,6 +105,11 @@ export default function EmployeesManager() {
     setStatus(emp.status);
     setDateJoined(emp.dateJoined);
     setRole(emp.role || 'employee');
+    setEmergencyContactName(emp.emergencyContactName || '');
+    setEmergencyContactRelation(emp.emergencyContactRelation || 'Guardian');
+    setEmergencyContactPhone(emp.emergencyContactPhone || '');
+    setPresentAddress(emp.presentAddress || '');
+    setPermanentAddress(emp.permanentAddress || '');
     setNewPassword('');
     setIsEditOpen(true);
   };
@@ -115,7 +132,12 @@ export default function EmployeesManager() {
         phone,
         status,
         role,
-        dateJoined
+        dateJoined,
+        emergencyContactName,
+        emergencyContactRelation,
+        emergencyContactPhone,
+        presentAddress,
+        permanentAddress
       };
 
       if (newPassword.trim()) {
@@ -160,7 +182,7 @@ export default function EmployeesManager() {
       return;
     }
 
-    if (confirm(`Are you sure you want to delete ${emp.name}'s account? This will permanently delete their profile document from Firestore. Note: If they have login credentials, you will still need to manually delete their Auth account in the Firebase Console.`)) {
+    if (confirm(`Are you sure you want to delete ${emp.name}'s account? This will permanently delete their profile document from Firestore.`)) {
       try {
         await db.deleteUser(emp.id);
         await db.addLog(
@@ -186,6 +208,11 @@ export default function EmployeesManager() {
     setRole('employee');
     setDateJoined(new Date().toISOString().split('T')[0]);
     setNewPassword('');
+    setEmergencyContactName('');
+    setEmergencyContactRelation('Guardian');
+    setEmergencyContactPhone('');
+    setPresentAddress('');
+    setPermanentAddress('');
   };
 
   const getLedgerStats = (empId) => {
@@ -444,6 +471,77 @@ export default function EmployeesManager() {
                     </select>
                   </div>
                 </div>
+
+                {/* Emergency Contact Sub-section */}
+                <div style={{ borderTop: '1px solid rgba(152, 152, 154, 0.3)', paddingTop: '0.75rem', marginTop: '0.75rem' }}>
+                  <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.5rem', color: '#000000' }}>
+                    Emergency Contact (Guardian / Sibling / Spouse)
+                  </h4>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="form-label">Relation</label>
+                      <select
+                        className="form-control"
+                        value={emergencyContactRelation}
+                        onChange={(e) => setEmergencyContactRelation(e.target.value)}
+                      >
+                        <option value="Guardian">Guardian</option>
+                        <option value="Sibling">Sibling</option>
+                        <option value="Spouse">Spouse</option>
+                        <option value="Parent">Parent</option>
+                        <option value="Relative">Relative</option>
+                        <option value="Friend">Friend</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Contact Person Name</label>
+                      <input
+                        type="text"
+                        placeholder="Guardian/Sibling/Spouse name"
+                        className="form-control"
+                        value={emergencyContactName}
+                        onChange={(e) => setEmergencyContactName(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Emergency Phone Number</label>
+                    <input
+                      type="text"
+                      placeholder="+88017XXXXXXXX"
+                      className="form-control"
+                      value={emergencyContactPhone}
+                      onChange={(e) => setEmergencyContactPhone(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Addresses Sub-section */}
+                <div style={{ borderTop: '1px solid rgba(152, 152, 154, 0.3)', paddingTop: '0.75rem', marginTop: '0.75rem' }}>
+                  <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.5rem', color: '#000000' }}>
+                    Address Information
+                  </h4>
+                  <div className="form-group">
+                    <label className="form-label">Present Address</label>
+                    <input
+                      type="text"
+                      placeholder="Current living address"
+                      className="form-control"
+                      value={presentAddress}
+                      onChange={(e) => setPresentAddress(e.target.value)}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Permanent Address</label>
+                    <input
+                      type="text"
+                      placeholder="Permanent home address"
+                      className="form-control"
+                      value={permanentAddress}
+                      onChange={(e) => setPermanentAddress(e.target.value)}
+                    />
+                  </div>
+                </div>
               </div>
               <div className="modal-footer">
                 <button type="button" onClick={() => setIsAddOpen(false)} className="btn btn-secondary">
@@ -549,6 +647,77 @@ export default function EmployeesManager() {
                       <option value="employee">Employee</option>
                       <option value="admin">System Admin</option>
                     </select>
+                  </div>
+                </div>
+
+                {/* Emergency Contact Sub-section */}
+                <div style={{ borderTop: '1px solid rgba(152, 152, 154, 0.3)', paddingTop: '0.75rem', marginTop: '0.75rem' }}>
+                  <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.5rem', color: '#000000' }}>
+                    Emergency Contact Details
+                  </h4>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="form-label">Relation</label>
+                      <select
+                        className="form-control"
+                        value={emergencyContactRelation}
+                        onChange={(e) => setEmergencyContactRelation(e.target.value)}
+                      >
+                        <option value="Guardian">Guardian</option>
+                        <option value="Sibling">Sibling</option>
+                        <option value="Spouse">Spouse</option>
+                        <option value="Parent">Parent</option>
+                        <option value="Relative">Relative</option>
+                        <option value="Friend">Friend</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Contact Person Name</label>
+                      <input
+                        type="text"
+                        placeholder="Guardian/Sibling/Spouse name"
+                        className="form-control"
+                        value={emergencyContactName}
+                        onChange={(e) => setEmergencyContactName(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Emergency Phone Number</label>
+                    <input
+                      type="text"
+                      placeholder="+88017XXXXXXXX"
+                      className="form-control"
+                      value={emergencyContactPhone}
+                      onChange={(e) => setEmergencyContactPhone(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Addresses Sub-section */}
+                <div style={{ borderTop: '1px solid rgba(152, 152, 154, 0.3)', paddingTop: '0.75rem', marginTop: '0.75rem' }}>
+                  <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.5rem', color: '#000000' }}>
+                    Address Information
+                  </h4>
+                  <div className="form-group">
+                    <label className="form-label">Present Address</label>
+                    <input
+                      type="text"
+                      placeholder="Current living address"
+                      className="form-control"
+                      value={presentAddress}
+                      onChange={(e) => setPresentAddress(e.target.value)}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Permanent Address</label>
+                    <input
+                      type="text"
+                      placeholder="Permanent home address"
+                      className="form-control"
+                      value={permanentAddress}
+                      onChange={(e) => setPermanentAddress(e.target.value)}
+                    />
                   </div>
                 </div>
               </div>

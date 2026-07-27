@@ -411,7 +411,7 @@ export default function EmployeeDashboard({ onRefreshNotifs }) {
           display: 'flex',
           alignItems: 'center',
           gap: '1.25rem',
-          background: 'linear-gradient(135deg, var(--success-light) 0%, rgba(255,255,255,0.02) 100%)',
+          background: 'var(--success-light)',
           borderColor: 'var(--success)'
         }}>
           <div style={{
