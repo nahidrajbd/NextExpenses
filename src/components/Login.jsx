@@ -33,7 +33,7 @@ export default function Login({ onLogin }) {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: '#ffffff',
+      background: 'linear-gradient(135deg, #f8fafc 0%, #e0f2fe 100%)',
       padding: '1.5rem',
       position: 'relative',
       overflow: 'hidden'
@@ -42,10 +42,11 @@ export default function Login({ onLogin }) {
         maxWidth: '450px',
         width: '100%',
         backgroundColor: '#ffffff',
-        border: '1px solid #98989A',
+        border: '1px solid rgba(101, 178, 232, 0.3)',
+        boxShadow: '0 12px 36px -8px rgba(101, 178, 232, 0.2)',
         padding: '2.5rem 2rem',
         borderRadius: '16px',
-        color: '#000000',
+        color: '#0f172a',
         zIndex: 1
       }}>
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
@@ -56,28 +57,28 @@ export default function Login({ onLogin }) {
             width: '60px',
             height: '60px',
             borderRadius: '14px',
-            background: '#98989A',
+            background: 'linear-gradient(135deg, #65B2E8 0%, #3b82f6 100%)',
             marginBottom: '1rem',
-            boxShadow: 'none'
+            boxShadow: '0 6px 18px rgba(101, 178, 232, 0.4)'
           }}>
             <Lock size={28} color="#ffffff" />
           </div>
-          <h2 style={{ color: '#000000', fontSize: '2rem', fontWeight: 800 }}>NextExpenses</h2>
-          <p style={{ color: '#98989A', fontSize: '0.9rem', marginTop: '0.5rem' }}>
+          <h2 style={{ color: '#0f172a', fontSize: '2rem', fontWeight: 800 }}>NextExpenses</h2>
+          <p style={{ color: '#64748b', fontSize: '0.9rem', marginTop: '0.5rem' }}>
             Office Expense Management System
           </p>
         </div>
 
         <form onSubmit={handleSubmit}>
           <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-            <label className="form-label" style={{ color: '#000000', fontWeight: 600 }}>Email Address</label>
+            <label className="form-label" style={{ color: '#0f172a', fontWeight: 600 }}>Email Address</label>
             <div style={{ position: 'relative' }}>
               <Mail size={18} style={{
                 position: 'absolute',
                 left: '12px',
                 top: '50%',
                 transform: 'translateY(-50%)',
-                color: '#98989A'
+                color: '#65B2E8'
               }} />
               <input
                 type="email"
@@ -88,22 +89,22 @@ export default function Login({ onLogin }) {
                 style={{
                   paddingLeft: '40px',
                   backgroundColor: '#ffffff',
-                  border: '1px solid #98989A',
-                  color: '#000000'
+                  border: '1px solid #cbd5e1',
+                  color: '#0f172a'
                 }}
               />
             </div>
           </div>
 
           <div className="form-group" style={{ marginBottom: '2rem' }}>
-            <label className="form-label" style={{ color: '#000000', fontWeight: 600 }}>Password</label>
+            <label className="form-label" style={{ color: '#0f172a', fontWeight: 600 }}>Password</label>
             <div style={{ position: 'relative' }}>
               <Lock size={18} style={{
                 position: 'absolute',
                 left: '12px',
                 top: '50%',
                 transform: 'translateY(-50%)',
-                color: '#98989A'
+                color: '#65B2E8'
               }} />
               <input
                 type={showPassword ? 'text' : 'password'}
@@ -115,8 +116,8 @@ export default function Login({ onLogin }) {
                   paddingLeft: '40px',
                   paddingRight: '40px',
                   backgroundColor: '#ffffff',
-                  border: '1px solid #98989A',
-                  color: '#000000'
+                  border: '1px solid #cbd5e1',
+                  color: '#0f172a'
                 }}
               />
               <button
@@ -129,7 +130,7 @@ export default function Login({ onLogin }) {
                   transform: 'translateY(-50%)',
                   background: 'none',
                   border: 'none',
-                  color: '#98989A',
+                  color: '#65B2E8',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center'
@@ -148,12 +149,13 @@ export default function Login({ onLogin }) {
               width: '100%',
               padding: '0.875rem',
               fontSize: '1rem',
-              background: '#98989A',
+              background: '#65B2E8',
               color: '#ffffff',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              borderRadius: '10px'
+              borderRadius: '10px',
+              boxShadow: '0 4px 14px rgba(101, 178, 232, 0.4)'
             }}
           >
             {loading ? 'Signing in...' : 'Sign In'}

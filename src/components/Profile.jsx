@@ -135,23 +135,25 @@ export default function Profile() {
               width: '60px',
               height: '60px',
               borderRadius: '50px',
-              backgroundColor: '#98989A',
+              backgroundColor: '#65B2E8',
               color: '#ffffff',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               fontWeight: 800,
-              fontSize: '1.5rem'
+              fontSize: '1.5rem',
+              boxShadow: '0 4px 14px rgba(101, 178, 232, 0.4)'
             }}>
-              {currentUser?.name.charAt(0)}
+              {currentUser?.name?.charAt(0)}
             </div>
             <div>
-              <h3 style={{ fontSize: '1.35rem', color: '#000000' }}>{currentUser?.name}</h3>
+              <h3 style={{ fontSize: '1.35rem', color: '#0f172a' }}>{currentUser?.name}</h3>
               <span className="badge" style={{
-                backgroundColor: 'rgba(152, 152, 154, 0.15)',
-                color: '#000000',
+                backgroundColor: 'rgba(101, 178, 232, 0.15)',
+                color: '#65B2E8',
                 marginTop: '0.25rem',
-                border: '1px solid #98989A'
+                border: '1px solid #65B2E8',
+                fontWeight: 700
               }}>
                 {currentUser?.role}
               </span>
@@ -162,29 +164,29 @@ export default function Profile() {
             display: 'flex',
             flexDirection: 'column',
             gap: '1rem',
-            borderTop: '1px solid #98989A',
+            borderTop: '1px solid #e2e8f0',
             paddingTop: '1.5rem'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <Mail size={18} style={{ color: '#98989A' }} />
+              <Mail size={18} style={{ color: '#65B2E8' }} />
               <div>
-                <div style={{ fontSize: '0.75rem', color: '#98989A', fontWeight: 600 }}>Email Address</div>
-                <div style={{ fontWeight: 500, fontSize: '0.9rem', color: '#000000' }}>{currentUser?.email}</div>
+                <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Email Address</div>
+                <div style={{ fontWeight: 500, fontSize: '0.9rem', color: '#0f172a' }}>{currentUser?.email}</div>
               </div>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <Calendar size={18} style={{ color: '#98989A' }} />
+              <Calendar size={18} style={{ color: '#65B2E8' }} />
               <div>
-                <div style={{ fontSize: '0.75rem', color: '#98989A', fontWeight: 600 }}>Date Joined</div>
-                <div style={{ fontWeight: 500, fontSize: '0.9rem', color: '#000000' }}>{currentUser?.dateJoined}</div>
+                <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Date Joined</div>
+                <div style={{ fontWeight: 500, fontSize: '0.9rem', color: '#0f172a' }}>{currentUser?.dateJoined}</div>
               </div>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <ShieldAlert size={18} style={{ color: '#98989A' }} />
+              <ShieldAlert size={18} style={{ color: '#65B2E8' }} />
               <div>
-                <div style={{ fontSize: '0.75rem', color: '#98989A', fontWeight: 600 }}>Account Status</div>
+                <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Account Status</div>
                 <span className="badge badge-approved" style={{ marginTop: '0.25rem', fontSize: '0.7rem' }}>
                   {currentUser?.status}
                 </span>
@@ -195,21 +197,21 @@ export default function Profile() {
 
         {/* Card 2: Update Personal Info & Emergency Contact & Addresses */}
         <div className="glass-card" style={{ gridColumn: 'span 1' }}>
-          <h3 style={{ fontSize: '1.2rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#000000' }}>
-            <HeartHandshake size={20} color="#98989A" />
+          <h3 style={{ fontSize: '1.2rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#0f172a' }}>
+            <HeartHandshake size={20} color="#65B2E8" />
             <span>Employee Information</span>
           </h3>
 
           <form onSubmit={handleSaveProfile}>
             <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label className="form-label" style={{ color: '#000000', fontWeight: 600 }}>Primary Phone Contact *</label>
+              <label className="form-label" style={{ color: '#0f172a', fontWeight: 600 }}>Primary Phone Contact *</label>
               <div style={{ position: 'relative' }}>
-                <Phone size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#98989A' }} />
+                <Phone size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#65B2E8' }} />
                 <input
                   type="text"
                   required
                   className="form-control"
-                  style={{ paddingLeft: '38px', border: '1px solid #98989A', backgroundColor: '#ffffff', color: '#000000' }}
+                  style={{ paddingLeft: '38px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#0f172a' }}
                   placeholder="+8801700000000"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
@@ -218,17 +220,17 @@ export default function Profile() {
             </div>
 
             {/* Emergency Contact Header */}
-            <div style={{ borderTop: '1px solid rgba(152, 152, 154, 0.3)', paddingTop: '1rem', marginTop: '1.25rem', marginBottom: '1rem' }}>
-              <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#000000', marginBottom: '0.75rem' }}>
+            <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1rem', marginTop: '1.25rem', marginBottom: '1rem' }}>
+              <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', marginBottom: '0.75rem' }}>
                 Emergency Contact Details
               </h4>
               
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
                 <div className="form-group">
-                  <label className="form-label" style={{ color: '#000000', fontSize: '0.8rem' }}>Relation *</label>
+                  <label className="form-label" style={{ color: '#0f172a', fontSize: '0.8rem' }}>Relation *</label>
                   <select
                     className="form-control"
-                    style={{ border: '1px solid #98989A', backgroundColor: '#ffffff', color: '#000000' }}
+                    style={{ border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#0f172a' }}
                     value={emergencyContactRelation}
                     onChange={(e) => setEmergencyContactRelation(e.target.value)}
                   >
@@ -242,12 +244,12 @@ export default function Profile() {
                 </div>
                 
                 <div className="form-group">
-                  <label className="form-label" style={{ color: '#000000', fontSize: '0.8rem' }}>Contact Person Name *</label>
+                  <label className="form-label" style={{ color: '#0f172a', fontSize: '0.8rem' }}>Contact Person Name *</label>
                   <input
                     type="text"
                     required
                     className="form-control"
-                    style={{ border: '1px solid #98989A', backgroundColor: '#ffffff', color: '#000000' }}
+                    style={{ border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#0f172a' }}
                     placeholder="Full name of contact"
                     value={emergencyContactName}
                     onChange={(e) => setEmergencyContactName(e.target.value)}
@@ -256,14 +258,14 @@ export default function Profile() {
               </div>
 
               <div className="form-group">
-                <label className="form-label" style={{ color: '#000000', fontSize: '0.8rem' }}>Emergency Contact Phone *</label>
+                <label className="form-label" style={{ color: '#0f172a', fontSize: '0.8rem' }}>Emergency Contact Phone *</label>
                 <div style={{ position: 'relative' }}>
-                  <Phone size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#98989A' }} />
+                  <Phone size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#65B2E8' }} />
                   <input
                     type="text"
                     required
                     className="form-control"
-                    style={{ paddingLeft: '38px', border: '1px solid #98989A', backgroundColor: '#ffffff', color: '#000000' }}
+                    style={{ paddingLeft: '38px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#0f172a' }}
                     placeholder="Phone number of emergency contact"
                     value={emergencyContactPhone}
                     onChange={(e) => setEmergencyContactPhone(e.target.value)}
@@ -273,18 +275,18 @@ export default function Profile() {
             </div>
 
             {/* Address Details Header */}
-            <div style={{ borderTop: '1px solid rgba(152, 152, 154, 0.3)', paddingTop: '1rem', marginTop: '1.25rem', marginBottom: '1rem' }}>
-              <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#000000', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <MapPin size={16} color="#98989A" /> Address Information
+            <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1rem', marginTop: '1.25rem', marginBottom: '1rem' }}>
+              <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <MapPin size={16} color="#65B2E8" /> Address Information
               </h4>
 
               <div className="form-group" style={{ marginBottom: '0.75rem' }}>
-                <label className="form-label" style={{ color: '#000000', fontSize: '0.8rem' }}>Present Address *</label>
+                <label className="form-label" style={{ color: '#0f172a', fontSize: '0.8rem' }}>Present Address *</label>
                 <textarea
                   required
                   rows={2}
                   className="form-control"
-                  style={{ border: '1px solid #98989A', backgroundColor: '#ffffff', color: '#000000', resize: 'vertical' }}
+                  style={{ border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#0f172a', resize: 'vertical' }}
                   placeholder="House, Road, Area, City, Postal Code"
                   value={presentAddress}
                   onChange={(e) => setPresentAddress(e.target.value)}
@@ -292,12 +294,12 @@ export default function Profile() {
               </div>
 
               <div className="form-group">
-                <label className="form-label" style={{ color: '#000000', fontSize: '0.8rem' }}>Permanent Address *</label>
+                <label className="form-label" style={{ color: '#0f172a', fontSize: '0.8rem' }}>Permanent Address *</label>
                 <textarea
                   required
                   rows={2}
                   className="form-control"
-                  style={{ border: '1px solid #98989A', backgroundColor: '#ffffff', color: '#000000', resize: 'vertical' }}
+                  style={{ border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#0f172a', resize: 'vertical' }}
                   placeholder="Village/House, Post Office, Upazila, District"
                   value={permanentAddress}
                   onChange={(e) => setPermanentAddress(e.target.value)}
@@ -309,7 +311,7 @@ export default function Profile() {
               type="submit"
               className="btn btn-primary"
               disabled={savingProfile}
-              style={{ width: '100%', marginTop: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', background: '#98989A', color: '#ffffff' }}
+              style={{ width: '100%', marginTop: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', background: '#65B2E8', color: '#ffffff', boxShadow: '0 4px 14px rgba(101, 178, 232, 0.4)' }}
             >
               <Save size={18} />
               {savingProfile ? 'Saving Details...' : 'Save Profile Information'}
@@ -319,19 +321,19 @@ export default function Profile() {
 
         {/* Card 3: Change Password Card */}
         <div className="glass-card">
-          <h3 style={{ fontSize: '1.2rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#000000' }}>
-            <KeyRound size={20} color="#98989A" />
+          <h3 style={{ fontSize: '1.2rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#0f172a' }}>
+            <KeyRound size={20} color="#65B2E8" />
             <span>Update Credentials</span>
           </h3>
 
           <form onSubmit={handleChangePassword}>
             <div className="form-group">
-              <label className="form-label" style={{ color: '#000000' }}>Current Password *</label>
+              <label className="form-label" style={{ color: '#0f172a' }}>Current Password *</label>
               <input
                 type="password"
                 required
                 className="form-control"
-                style={{ border: '1px solid #98989A', backgroundColor: '#ffffff', color: '#000000' }}
+                style={{ border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#0f172a' }}
                 placeholder="••••••••"
                 value={oldPassword}
                 onChange={(e) => setOldPassword(e.target.value)}
@@ -339,12 +341,12 @@ export default function Profile() {
             </div>
 
             <div className="form-group">
-              <label className="form-label" style={{ color: '#000000' }}>New Password *</label>
+              <label className="form-label" style={{ color: '#0f172a' }}>New Password *</label>
               <input
                 type="password"
                 required
                 className="form-control"
-                style={{ border: '1px solid #98989A', backgroundColor: '#ffffff', color: '#000000' }}
+                style={{ border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#0f172a' }}
                 placeholder="Min 6 characters"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
@@ -352,19 +354,19 @@ export default function Profile() {
             </div>
 
             <div className="form-group">
-              <label className="form-label" style={{ color: '#000000' }}>Confirm New Password *</label>
+              <label className="form-label" style={{ color: '#0f172a' }}>Confirm New Password *</label>
               <input
                 type="password"
                 required
                 className="form-control"
-                style={{ border: '1px solid #98989A', backgroundColor: '#ffffff', color: '#000000' }}
+                style={{ border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#0f172a' }}
                 placeholder="••••••••"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
               />
             </div>
 
-            <button type="submit" className="btn btn-primary" disabled={loading} style={{ width: '100%', marginTop: '1.5rem', background: '#98989A', color: '#ffffff' }}>
+            <button type="submit" className="btn btn-primary" disabled={loading} style={{ width: '100%', marginTop: '1.5rem', background: '#65B2E8', color: '#ffffff', boxShadow: '0 4px 14px rgba(101, 178, 232, 0.4)' }}>
               {loading ? 'Updating...' : 'Change Password'}
             </button>
           </form>

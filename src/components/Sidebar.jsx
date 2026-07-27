@@ -49,8 +49,8 @@ export default function Sidebar({ currentView, onViewChange, notificationsCount,
     sidebar: {
       width: '260px',
       backgroundColor: '#ffffff',
-      borderRight: '1px solid #98989A',
-      color: '#000000',
+      borderRight: '1px solid var(--border-color)',
+      color: 'var(--text-primary)',
       display: 'flex',
       flexDirection: 'column',
       padding: '1.5rem',
@@ -67,8 +67,8 @@ export default function Sidebar({ currentView, onViewChange, notificationsCount,
       width: '100%',
       height: '60px',
       backgroundColor: '#ffffff',
-      borderBottom: '1px solid #98989A',
-      color: '#000000',
+      borderBottom: '1px solid var(--border-color)',
+      color: 'var(--text-primary)',
       alignItems: 'center',
       justifyContent: 'space-between',
       padding: '0 1rem',
@@ -81,11 +81,11 @@ export default function Sidebar({ currentView, onViewChange, notificationsCount,
       {/* Mobile Top Bar */}
       <div className="mobile-bar-element" style={navStyles.mobileBar}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Coins size={22} color="#98989A" />
-          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.1rem', color: '#000000' }}>NextExpenses</span>
+          <Coins size={22} color="#65B2E8" />
+          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.1rem', color: '#0f172a' }}>NextExpenses</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <button onClick={() => setMobileOpen(!mobileOpen)} className="btn-icon" style={{ color: '#000000' }}>
+          <button onClick={() => setMobileOpen(!mobileOpen)} className="btn-icon" style={{ color: '#0f172a' }}>
             {mobileOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
@@ -101,22 +101,22 @@ export default function Sidebar({ currentView, onViewChange, notificationsCount,
         {/* Brand */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2.5rem' }}>
           <div style={{
-            background: '#98989A',
+            background: 'linear-gradient(135deg, #65B2E8 0%, #3b82f6 100%)',
             width: '40px',
             height: '40px',
             borderRadius: '10px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: 'none'
+            boxShadow: '0 4px 14px rgba(101, 178, 232, 0.4)'
           }}>
             <Coins size={20} color="#ffffff" />
           </div>
           <div>
-            <h1 style={{ color: '#000000', fontSize: '1.25rem', fontFamily: 'var(--font-display)', fontWeight: 800 }}>
+            <h1 style={{ color: '#0f172a', fontSize: '1.25rem', fontFamily: 'var(--font-display)', fontWeight: 800 }}>
               NextExpenses
             </h1>
-            <span style={{ fontSize: '0.7rem', color: '#98989A', textTransform: 'uppercase', letterSpacing: '1px' }}>
+            <span style={{ fontSize: '0.7rem', color: '#65B2E8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px' }}>
               {currentUser?.role === 'admin' ? 'Admin Portal' : 'Employee Desk'}
             </span>
           </div>
@@ -124,8 +124,8 @@ export default function Sidebar({ currentView, onViewChange, notificationsCount,
 
         {/* User Card */}
         <div style={{
-          backgroundColor: '#f4f4f5',
-          border: '1px solid rgba(152, 152, 154, 0.3)',
+          backgroundColor: 'rgba(101, 178, 232, 0.08)',
+          border: '1px solid rgba(101, 178, 232, 0.25)',
           borderRadius: '12px',
           padding: '0.875rem',
           marginBottom: '1.5rem',
@@ -137,21 +137,22 @@ export default function Sidebar({ currentView, onViewChange, notificationsCount,
             width: '40px',
             height: '40px',
             borderRadius: '50px',
-            backgroundColor: '#98989A',
+            backgroundColor: '#65B2E8',
             color: '#ffffff',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             fontWeight: 'bold',
-            fontSize: '1rem'
+            fontSize: '1rem',
+            boxShadow: '0 2px 8px rgba(101, 178, 232, 0.4)'
           }}>
-            {currentUser?.name.charAt(0)}
+            {currentUser?.name?.charAt(0)}
           </div>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ fontWeight: 600, fontSize: '0.85rem', color: '#000000', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <div style={{ fontWeight: 600, fontSize: '0.85rem', color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {currentUser?.name}
             </div>
-            <div style={{ fontSize: '0.75rem', color: '#98989A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <div style={{ fontSize: '0.75rem', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {currentUser?.email}
             </div>
           </div>
@@ -174,8 +175,9 @@ export default function Sidebar({ currentView, onViewChange, notificationsCount,
                   padding: '0.75rem 1rem',
                   borderRadius: '10px',
                   border: 'none',
-                  background: isActive ? '#98989A' : 'transparent',
-                  color: isActive ? '#ffffff' : '#000000',
+                  background: isActive ? '#65B2E8' : 'transparent',
+                  color: isActive ? '#ffffff' : '#334155',
+                  boxShadow: isActive ? '0 4px 14px rgba(101, 178, 232, 0.35)' : 'none',
                   cursor: 'pointer',
                   textAlign: 'left',
                   fontWeight: 600,
@@ -206,7 +208,7 @@ export default function Sidebar({ currentView, onViewChange, notificationsCount,
 
         {/* Footer actions */}
         <div style={{
-          borderTop: '1px solid #98989A',
+          borderTop: '1px solid var(--border-color)',
           paddingTop: '1.25rem',
           display: 'flex',
           flexDirection: 'column',
@@ -258,8 +260,8 @@ export default function Sidebar({ currentView, onViewChange, notificationsCount,
       {/* Sidebar Responsive Overlay styles */}
       <style>{`
         .sidebar-item-hover:hover {
-          background-color: var(--bg-sidebar-hover) !important;
-          color: #ffffff !important;
+          background-color: rgba(101, 178, 232, 0.1) !important;
+          color: #65B2E8 !important;
         }
         .sidebar-item-hover-danger:hover {
           background-color: rgba(239, 68, 68, 0.1) !important;

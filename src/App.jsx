@@ -187,21 +187,21 @@ export default function App() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: '#ffffff',
-        color: '#000000',
+        background: '#f8fafc',
+        color: '#0f172a',
         fontFamily: 'Inter, sans-serif'
       }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{
             width: '40px',
             height: '40px',
-            border: '3px solid rgba(152, 152, 154, 0.2)',
-            borderTopColor: '#98989A',
+            border: '3px solid rgba(101, 178, 232, 0.2)',
+            borderTopColor: '#65B2E8',
             borderRadius: '50%',
             animation: 'spin 1s linear infinite',
             margin: '0 auto 1rem'
           }} />
-          <p style={{ color: '#98989A', fontSize: '0.9rem' }}>Restoring secure session...</p>
+          <p style={{ color: '#64748b', fontSize: '0.9rem' }}>Restoring secure session...</p>
         </div>
       </div>
     );

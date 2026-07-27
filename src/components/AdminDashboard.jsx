@@ -269,7 +269,7 @@ export default function AdminDashboard({ onViewChange }) {
                         top: 0,
                         height: '100%',
                         width: `${barWidth}%`,
-                        background: '#98989A',
+                        background: 'linear-gradient(90deg, #65B2E8 0%, #3b82f6 100%)',
                         zIndex: 1,
                         borderRadius: '6px'
                       }} />
