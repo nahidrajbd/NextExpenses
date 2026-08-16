@@ -15,6 +15,7 @@ export default defineConfig(({ mode }) => {
             for await (const chunk of req) {
               body += chunk;
             }
+            const { to, subject, html } = JSON.parse(body);
             const apiKey = env.VITE_RESEND_API_KEY || '';
             const sender = env.VITE_RESEND_FROM || 'nahid <onboarding@resend.dev>';
 
@@ -33,11 +34,16 @@ export default defineConfig(({ mode }) => {
             });
 
             const data = await response.json();
+            if (!response.ok) {
+              console.warn(`[Resend Dev Middleware] Failed (${response.status}):`, data);
+            } else {
+              console.log(`[Resend Dev Middleware] Email successfully sent to ${Array.isArray(to) ? to.join(', ') : to} (ID: ${data.id})`);
+            }
             res.setHeader('Content-Type', 'application/json');
             res.statusCode = response.status;
             res.end(JSON.stringify(data));
           } catch (error) {
-            console.error('Error in Resend proxy middleware:', error);
+            console.error('[Resend Dev Middleware] Error:', error);
             res.setHeader('Content-Type', 'application/json');
             res.statusCode = 500;
             res.end(JSON.stringify({ error: error.message }));
