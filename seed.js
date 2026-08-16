@@ -1,7 +1,7 @@
 // seed.js - Seeds the Firebase project with initial NextExpenses data.
 import { initializeApp } from 'firebase/app';
 import { getFirestore, doc, writeBatch, collection, getDocs } from 'firebase/firestore';
-import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 
 // Firebase configuration loaded from environment variables
 const firebaseConfig = {
@@ -291,6 +291,8 @@ async function seed() {
   // Map to store legacyId -> new UID
   const uidMap = {};
 
+  const batch = writeBatch(db);
+
   // 1. Fetch existing users or create them
   console.log('1. Checking and creating Authentication accounts...');
   for (const user of defaultUsers) {
@@ -303,16 +305,35 @@ async function seed() {
       console.log(` - Created new account: ${email} (UID: ${uid})`);
     } catch (err) {
       if (err.code === 'auth/email-already-in-use') {
-        // Fetch existing users from Firestore to locate the UID
-        // We'll read the users collection in the next step, so we'll just register the legacy mapping after reading
-        console.log(` - Account ${email} already exists.`);
+        try {
+          const userCredential = await signInWithEmailAndPassword(auth, email, password);
+          uid = userCredential.user.uid;
+          console.log(` - Account ${email} already exists, logged in (UID: ${uid})`);
+        } catch (signInErr) {
+          console.error(` - Error logging in for existing email ${email}:`, signInErr.message);
+        }
       } else {
         console.error(` - Error creating account for ${email}:`, err.message);
       }
     }
+
+    if (uid) {
+      uidMap[id] = uid;
+      // Write user document to Firestore
+      batch.set(doc(db, 'users', uid), {
+        id: uid,
+        legacyId: id,
+        email: email.toLowerCase().trim(),
+        name: name.trim(),
+        phone: phone.trim(),
+        role: role || 'employee',
+        status: status || 'Active',
+        dateJoined: dateJoined
+      });
+    }
   }
 
-  // Fetch Firestore mapping of legacyId to new UID to align records
+  // Fetch current Firestore mapping of legacyId to new UID to align records
   const querySnapshot = await getDocs(collection(db, 'users'));
   querySnapshot.forEach((docSnapshot) => {
     const data = docSnapshot.data();
@@ -321,20 +342,8 @@ async function seed() {
     }
   });
 
-  // If any users were newly created, their docs aren't in Firestore yet. Let's write them.
-  for (const user of defaultUsers) {
-    if (!uidMap[user.id]) {
-      // Find the user details. We need to associate them. Since it already existed, or was just created,
-      // let's ensure Firestore has the user record.
-      // If we couldn't get the UID because it already exists, let's search auth by email.
-      // However, since we already seeded them in the previous run, they are definitely in the Firestore 'users' collection!
-      // Let's verify if uidMap is populated correctly.
-    }
-  }
-
   console.log('Mapped UIDs:', uidMap);
 
-  const batch = writeBatch(db);
 
   // 2. Categories
   console.log('2. Seeding Categories...');

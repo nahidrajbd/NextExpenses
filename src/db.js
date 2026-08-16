@@ -15,6 +15,7 @@ import {
   writeBatch 
 } from 'firebase/firestore';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
+import { sendSubmissionEmail, sendApprovalEmail, sendTransactionEmail } from './services/emailService';
 
 // Standard Firebase config loaded from environment variables
 const firebaseConfig = {
@@ -167,14 +168,52 @@ export const db = {
       rejectionComment: ''
     };
     await setDoc(doc(firestore, 'expenses', id), newExp);
+
+    // Trigger email notification asynchronously
+    (async () => {
+      try {
+        const empDoc = await getDoc(doc(firestore, 'users', newExp.employeeId));
+        const employee = empDoc.exists() ? empDoc.data() : { name: 'Employee', email: 'employee@office.com' };
+        
+        const q = query(collection(firestore, 'users'), where('role', '==', 'admin'));
+        const qSnapshot = await getDocs(q);
+        const admins = qSnapshot.docs.map(doc => doc.data());
+        
+        await sendSubmissionEmail({ expense: newExp, employee, admins });
+      } catch (err) {
+        console.error('Failed to trigger submission email notification:', err);
+      }
+    })();
+
     return newExp;
   },
 
   async updateExpense(id, updatedData) {
     const expRef = doc(firestore, 'expenses', id);
+    
+    // Get previous document to check if status changes
+    const prevDoc = await getDoc(expRef);
+    const prevData = prevDoc.exists() ? prevDoc.data() : null;
+
     await updateDoc(expRef, updatedData);
     const freshDoc = await getDoc(expRef);
-    return { id, ...freshDoc.data() };
+    const freshData = { id, ...freshDoc.data() };
+
+    // Trigger email notification if status updated to Approved/Rejected
+    if (updatedData.status && prevData && prevData.status !== updatedData.status) {
+      (async () => {
+        try {
+          const empDoc = await getDoc(doc(firestore, 'users', freshData.employeeId));
+          const employee = empDoc.exists() ? empDoc.data() : { name: 'Employee', email: 'employee@office.com' };
+          
+          await sendApprovalEmail({ expense: freshData, employee });
+        } catch (err) {
+          console.error('Failed to trigger approval email notification:', err);
+        }
+      })();
+    }
+
+    return freshData;
   },
 
   async deleteExpense(id) {
@@ -198,6 +237,19 @@ export const db = {
       recordedBy: actorName || 'System Admin'
     };
     await setDoc(doc(firestore, 'payments', id), newPayment);
+
+    // Trigger email notification asynchronously
+    (async () => {
+      try {
+        const empDoc = await getDoc(doc(firestore, 'users', newPayment.employeeId));
+        const employee = empDoc.exists() ? empDoc.data() : { name: 'Employee', email: 'employee@office.com' };
+        
+        await sendTransactionEmail({ payment: newPayment, employee });
+      } catch (err) {
+        console.error('Failed to trigger payment email notification:', err);
+      }
+    })();
+
     return newPayment;
   },
 

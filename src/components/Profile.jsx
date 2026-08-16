@@ -3,7 +3,7 @@ import { db } from '../db';
 import { auth } from '../firebase';
 import { updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { AuthContext, ToastContext } from '../App';
-import { User, Calendar, Phone, Mail, ShieldAlert, KeyRound, MapPin, HeartHandshake, Save } from 'lucide-react';
+import { User, Calendar, Phone, Mail, ShieldAlert, KeyRound, MapPin, HeartHandshake, Save, Send } from 'lucide-react';
 
 export default function Profile() {
   const { currentUser, refreshUser } = useContext(AuthContext);
@@ -24,6 +24,10 @@ export default function Profile() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Notification / Sandbox email state
+  const [testEmail, setTestEmail] = useState('');
+  const [loadingSettings, setLoadingSettings] = useState(false);
+
   useEffect(() => {
     if (currentUser) {
       setPhone(currentUser.phone || '');
@@ -32,6 +36,7 @@ export default function Profile() {
       setEmergencyContactPhone(currentUser.emergencyContactPhone || '');
       setPresentAddress(currentUser.presentAddress || '');
       setPermanentAddress(currentUser.permanentAddress || '');
+      setTestEmail(currentUser.testEmailOverride || '');
     }
   }, [currentUser]);
 
@@ -59,6 +64,24 @@ export default function Profile() {
       showToast('Failed to update profile details.', 'error');
     } finally {
       setSavingProfile(false);
+    }
+  };
+
+  const handleSaveNotificationSettings = async (e) => {
+    e.preventDefault();
+    setLoadingSettings(true);
+    try {
+      await db.updateUser(currentUser.id, {
+        testEmailOverride: testEmail.trim().toLowerCase()
+      });
+      await db.addLog(currentUser.id, 'Update Notifications', `Updated email override settings to: ${testEmail}`);
+      showToast('Notification settings saved successfully!', 'success');
+      await refreshUser();
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to update email settings.', 'error');
+    } finally {
+      setLoadingSettings(false);
     }
   };
 
@@ -370,6 +393,40 @@ export default function Profile() {
               {loading ? 'Updating...' : 'Change Password'}
             </button>
           </form>
+        </div>
+
+        {/* Email Sandbox Settings Card */}
+        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          <div>
+            <h3 style={{ fontSize: '1.2rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Send size={20} color="var(--info)" style={{ transform: 'rotate(-45deg)', marginTop: '-3px' }} />
+              <span>Sandbox Settings</span>
+            </h3>
+            
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.4', marginBottom: '1.25rem' }}>
+              Resend sandbox accounts restrict email delivery to verified developer emails. Configure an override address below to receive all approval, submission, and transaction alerts.
+            </p>
+
+            <form onSubmit={handleSaveNotificationSettings}>
+              <div className="form-group">
+                <label className="form-label">Sandbox Verified Email Override</label>
+                <input
+                  type="email"
+                  className="form-control"
+                  placeholder="e.g. developer@resend.dev"
+                  value={testEmail}
+                  onChange={(e) => setTestEmail(e.target.value)}
+                />
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem', display: 'block', lineHeight: '1.3' }}>
+                  Leave empty to send directly to actual user accounts (e.g. admin@office.com).
+                </span>
+              </div>
+
+              <button type="submit" className="btn btn-info" disabled={loadingSettings} style={{ width: '100%', marginTop: '1.5rem', backgroundColor: 'var(--info)', borderColor: 'var(--info)' }}>
+                {loadingSettings ? 'Saving...' : 'Save Settings'}
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     </div>
