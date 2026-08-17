@@ -1,7 +1,4 @@
-// db.js - Live Firestore & Firebase Authentication Database for NextExpenses
-import { initializeApp } from 'firebase/app';
 import { 
-  getFirestore, 
   doc, 
   setDoc, 
   getDoc, 
@@ -14,23 +11,10 @@ import {
   orderBy, 
   writeBatch 
 } from 'firebase/firestore';
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
+import { auth, db as firestore, firebaseConfig, app } from './firebase';
 import { sendSubmissionEmail, sendApprovalEmail, sendTransactionEmail } from './services/emailService';
-
-// Standard Firebase config loaded from environment variables
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
-};
-
-// Initialize main Firebase instance
-const app = initializeApp(firebaseConfig);
-const firestore = getFirestore(app);
-const auth = getAuth(app);
 
 // Secondary Auth instance for creating new employees without logging the Admin out
 let secondaryAuth = null;
