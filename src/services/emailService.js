@@ -40,7 +40,7 @@ export async function sendEmail({ to, subject, html }) {
     // Direct API fallback (might fail due to CORS in some clients, but serves as fallback)
     try {
       const apiKey = import.meta.env.VITE_RESEND_API_KEY || '';
-      const sender = import.meta.env.VITE_RESEND_FROM || 'nahid <onboarding@resend.dev>';
+      const sender = import.meta.env.VITE_RESEND_FROM || 'nahid <expenses@nextpostmedia.com>';
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {

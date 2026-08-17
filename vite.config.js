@@ -17,7 +17,7 @@ export default defineConfig(({ mode }) => {
             }
             const { to, subject, html } = JSON.parse(body);
             const apiKey = env.VITE_RESEND_API_KEY || '';
-            const sender = env.VITE_RESEND_FROM || 'nahid <onboarding@resend.dev>';
+            const sender = env.VITE_RESEND_FROM || 'nahid <expenses@nextpostmedia.com>';
 
             const response = await fetch('https://api.resend.com/emails', {
               method: 'POST',
