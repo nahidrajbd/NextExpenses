@@ -12,6 +12,23 @@ export function defaultSchedule() {
   };
 }
 
+// Guards against stale/partial schedule shapes (e.g. documents saved under an
+// earlier schedule format) so the editor UI never crashes on missing fields.
+export function normalizeSchedule(raw) {
+  const base = defaultSchedule();
+  if (!raw || typeof raw !== 'object') return base;
+  return {
+    weekday: {
+      start: raw.weekday?.start || base.weekday.start,
+      end: raw.weekday?.end || base.weekday.end
+    },
+    weekend: {
+      start: raw.weekend?.start || base.weekend.start,
+      end: raw.weekend?.end || base.weekend.end
+    }
+  };
+}
+
 export function todayKey(date = new Date()) {
   return DAY_INDEX_TO_KEY[date.getDay()];
 }
@@ -31,9 +48,9 @@ export const SOON_WINDOW_MINUTES = 30;
 
 // Determines an employee's live presence status based on their recurring schedule and the current time.
 export function getEmployeeStatus(employee, now = new Date()) {
-  const schedule = employee.schedule;
+  const schedule = normalizeSchedule(employee.schedule);
   const weekend = isWeekend(now);
-  const shift = schedule?.[weekend ? 'weekend' : 'weekday'];
+  const shift = schedule[weekend ? 'weekend' : 'weekday'];
   const modeLabel = weekend ? 'WFH' : 'In Office';
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
 

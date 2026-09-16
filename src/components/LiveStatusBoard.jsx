@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { db } from '../db';
 import { AuthContext, ToastContext } from '../App';
-import { getEmployeeStatus, STATUS_COLORS, todayKey, defaultSchedule } from '../utils/schedule';
+import { getEmployeeStatus, STATUS_COLORS, todayKey, normalizeSchedule } from '../utils/schedule';
 import { Radio, Clock, UserX2, Settings, X, Save } from 'lucide-react';
 
 export default function LiveStatusBoard() {
@@ -154,11 +154,7 @@ function ScheduleModal({ employees, currentUser, showToast, onClose, onSaved }) 
   const [drafts, setDrafts] = useState(() => {
     const map = {};
     employees.forEach(emp => {
-      const base = defaultSchedule();
-      map[emp.id] = {
-        weekday: { ...base.weekday, ...(emp.schedule?.weekday || {}) },
-        weekend: { ...base.weekend, ...(emp.schedule?.weekend || {}) }
-      };
+      map[emp.id] = normalizeSchedule(emp.schedule);
     });
     return map;
   });

@@ -13,7 +13,7 @@ import {
   Users, Plus, Edit, X, UserCheck, UserX, Mail, Phone, Trash, ArrowLeft,
   Search, Camera, FileText, IdCard, CreditCard, FileCheck, FileSignature, Briefcase
 } from 'lucide-react';
-import { getEmployeeStatus, STATUS_COLORS, defaultSchedule } from '../utils/schedule';
+import { getEmployeeStatus, STATUS_COLORS, defaultSchedule, normalizeSchedule } from '../utils/schedule';
 import MiniBarChart from './MiniBarChart';
 import { ScheduleEditorFields } from './LiveStatusBoard';
 
@@ -123,7 +123,7 @@ export default function EmployeesManager() {
 
   const openDetail = async (emp) => {
     setSelectedEmp(emp);
-    setForm({ ...EMPTY_PROFILE, ...emp, newPassword: '' });
+    setForm({ ...EMPTY_PROFILE, ...emp, newPassword: '', schedule: normalizeSchedule(emp.schedule) });
     setPhotoPreview(emp.photoURL || '');
     setDetailTab('overview');
     setFinanceSummary(null);
@@ -401,8 +401,11 @@ export default function EmployeesManager() {
                 Regular Mon–Fri office hours and Sat–Sun work-from-home hours. This stays in effect every week until changed.
               </p>
               <ScheduleEditorFields
-                schedule={form.schedule || defaultSchedule()}
-                onChange={(block, patch) => setField('schedule', { ...form.schedule, [block]: { ...form.schedule?.[block], ...patch } })}
+                schedule={normalizeSchedule(form.schedule)}
+                onChange={(block, patch) => setField('schedule', {
+                  ...normalizeSchedule(form.schedule),
+                  [block]: { ...normalizeSchedule(form.schedule)[block], ...patch }
+                })}
               />
             </div>
 
