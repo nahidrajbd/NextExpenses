@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { db } from '../db';
 import { AuthContext, ToastContext } from '../App';
-import { getEmployeeStatus, STATUS_COLORS, todayKey, normalizeSchedule, formatTime12 } from '../utils/schedule';
-import { Radio, Clock, UserX2, Settings, X, Save, PersonStanding } from 'lucide-react';
+import { getEmployeeStatus, STATUS_COLORS, todayKey, normalizeSchedule, formatTime12, isScheduleStale, SCHEDULE_REVIEW_DAYS } from '../utils/schedule';
+import { Radio, Clock, UserX2, Settings, X, Save, PersonStanding, CalendarClock, AlertTriangle } from 'lucide-react';
 
 const MAX_STARTING_SOON = 3;
 
@@ -14,6 +14,10 @@ export default function LiveStatusBoard() {
   const [employees, setEmployees] = useState([]);
   const [now, setNow] = useState(new Date());
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
+  const [isMyScheduleOpen, setIsMyScheduleOpen] = useState(false);
+
+  const myRecord = employees.find(e => e.id === currentUser?.id) || currentUser;
+  const myScheduleStale = currentUser?.role === 'employee' && isScheduleStale(myRecord?.schedule, now);
 
   useEffect(() => {
     loadData();
@@ -135,6 +139,12 @@ export default function LiveStatusBoard() {
             <Radio size={14} />
             <span>{now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })} • Today: {todayKey(now)}</span>
           </div>
+          {!isAdmin && (
+            <button onClick={() => setIsMyScheduleOpen(true)} className="btn btn-primary">
+              <CalendarClock size={16} />
+              <span>My Schedule</span>
+            </button>
+          )}
           {isAdmin && (
             <button onClick={() => setIsScheduleOpen(true)} className="btn btn-primary">
               <Settings size={16} />
@@ -143,6 +153,24 @@ export default function LiveStatusBoard() {
           )}
         </div>
       </div>
+
+      {myScheduleStale && (
+        <div className="glass-card" style={{
+          display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem',
+          padding: '0.9rem 1.1rem', borderLeft: `4px solid ${STATUS_COLORS.soon}`
+        }}>
+          <AlertTriangle size={20} color={STATUS_COLORS.soon} style={{ flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>Confirm your work schedule for this week</div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+              You haven't updated it in {SCHEDULE_REVIEW_DAYS}+ days. Review and confirm so your status stays accurate.
+            </div>
+          </div>
+          <button onClick={() => setIsMyScheduleOpen(true)} className="btn btn-secondary" style={{ flexShrink: 0 }}>
+            Review Now
+          </button>
+        </div>
+      )}
 
       <Section title="In Office Now" items={online} tone={STATUS_COLORS.online} showProgress />
       <Section title="Starting Soon" items={soon} tone={STATUS_COLORS.soon} />
@@ -182,6 +210,62 @@ export default function LiveStatusBoard() {
           onSaved={loadData}
         />
       )}
+
+      {isMyScheduleOpen && (
+        <MyScheduleModal
+          me={myRecord}
+          showToast={showToast}
+          onClose={() => setIsMyScheduleOpen(false)}
+          onSaved={loadData}
+        />
+      )}
+    </div>
+  );
+}
+
+function MyScheduleModal({ me, showToast, onClose, onSaved }) {
+  const [draft, setDraft] = useState(() => normalizeSchedule(me?.schedule));
+  const [saving, setSaving] = useState(false);
+
+  const setBlock = (block, patch) => {
+    setDraft(prev => ({ ...prev, [block]: { ...prev[block], ...patch } }));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await db.updateUser(me.id, { schedule: { ...draft, updatedAt: new Date().toISOString() } });
+      showToast('Your schedule has been confirmed for this week.', 'success');
+      await onSaved();
+      onClose();
+    } catch (err) {
+      showToast('Failed to save your schedule.', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content">
+        <div className="modal-header">
+          <h3 style={{ fontSize: '1.25rem' }}>My Work Schedule</h3>
+          <button onClick={onClose} className="btn-icon"><X size={20} /></button>
+        </div>
+        <div className="modal-body">
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
+            Set your recurring Mon–Fri office hours and Sat–Sun work-from-home hours. Please review and confirm this weekly, even if nothing changed, so your status stays accurate.
+          </p>
+          <ScheduleEditorFields schedule={draft} onChange={setBlock} />
+        </div>
+        <div className="modal-footer">
+          <button type="button" onClick={onClose} className="btn btn-secondary">Cancel</button>
+          <button type="button" onClick={handleSave} className="btn btn-primary" disabled={saving}>
+            <Save size={16} />
+            <span>{saving ? 'Saving...' : 'Confirm Schedule'}</span>
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -206,7 +290,9 @@ function ScheduleModal({ employees, currentUser, showToast, onClose, onSaved }) 
   const handleSaveAll = async () => {
     setSaving(true);
     try {
-      await Promise.all(employees.map(emp => db.updateUser(emp.id, { schedule: drafts[emp.id] })));
+      await Promise.all(employees.map(emp => db.updateUser(emp.id, {
+        schedule: { ...drafts[emp.id], updatedAt: new Date().toISOString() }
+      })));
       await db.addLog(currentUser.id, 'Update Schedules', `Updated work schedules for ${employees.length} employee(s)`);
       showToast('Schedules saved successfully.', 'success');
       await onSaved();

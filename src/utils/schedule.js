@@ -8,8 +8,20 @@ const DAY_INDEX_TO_KEY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export function defaultSchedule() {
   return {
     weekday: { start: '09:00', end: '18:00' },
-    weekend: { start: '10:00', end: '15:00' }
+    weekend: { start: '10:00', end: '15:00' },
+    updatedAt: null
   };
+}
+
+export const SCHEDULE_REVIEW_DAYS = 7;
+
+// True if the employee hasn't confirmed/updated their schedule within the review window,
+// so the UI can nudge them before it goes stale for the new week.
+export function isScheduleStale(schedule, now = new Date()) {
+  if (!schedule?.updatedAt) return true;
+  const updated = new Date(schedule.updatedAt);
+  const diffDays = (now.getTime() - updated.getTime()) / (1000 * 60 * 60 * 24);
+  return diffDays >= SCHEDULE_REVIEW_DAYS;
 }
 
 // Guards against stale/partial schedule shapes (e.g. documents saved under an
@@ -25,7 +37,8 @@ export function normalizeSchedule(raw) {
     weekend: {
       start: raw.weekend?.start || base.weekend.start,
       end: raw.weekend?.end || base.weekend.end
-    }
+    },
+    updatedAt: raw.updatedAt || null
   };
 }
 

@@ -15,7 +15,6 @@ import {
 } from 'lucide-react';
 import { getEmployeeStatus, STATUS_COLORS, defaultSchedule, normalizeSchedule } from '../utils/schedule';
 import MiniBarChart from './MiniBarChart';
-import { ScheduleEditorFields } from './LiveStatusBoard';
 
 const EMPTY_PROFILE = {
   name: '', email: '', phone: '', password: '', status: 'Active',
@@ -394,20 +393,6 @@ export default function EmployeesManager() {
               isEdit
               isAdmin={isAdmin}
             />
-
-            <div style={{ borderTop: '1px solid rgba(152, 152, 154, 0.3)', paddingTop: '0.75rem', marginTop: '0.75rem' }}>
-              <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.5rem' }}>Work Schedule</h4>
-              <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
-                Regular Mon–Fri office hours and Sat–Sun work-from-home hours. This stays in effect every week until changed.
-              </p>
-              <ScheduleEditorFields
-                schedule={normalizeSchedule(form.schedule)}
-                onChange={(block, patch) => setField('schedule', {
-                  ...normalizeSchedule(form.schedule),
-                  [block]: { ...normalizeSchedule(form.schedule)[block], ...patch }
-                })}
-              />
-            </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
               <button type="button" onClick={() => setDetailTab('overview')} className="btn btn-secondary">Cancel</button>
