@@ -108,7 +108,22 @@ export const db = {
       emergencyContactRelation: user.emergencyContactRelation?.trim() || 'Guardian',
       emergencyContactPhone: user.emergencyContactPhone?.trim() || '',
       presentAddress: user.presentAddress?.trim() || '',
-      permanentAddress: user.permanentAddress?.trim() || ''
+      permanentAddress: user.permanentAddress?.trim() || '',
+      // HR / Profile details
+      photoURL: user.photoURL || '',
+      employeeCode: user.employeeCode?.trim() || '',
+      designation: user.designation?.trim() || '',
+      department: user.department?.trim() || '',
+      dateOfBirth: user.dateOfBirth || '',
+      gender: user.gender || '',
+      bloodGroup: user.bloodGroup || '',
+      nationalId: user.nationalId?.trim() || '',
+      fatherName: user.fatherName?.trim() || '',
+      motherName: user.motherName?.trim() || '',
+      maritalStatus: user.maritalStatus || '',
+      education: user.education?.trim() || '',
+      employmentType: user.employmentType || 'Full-Time',
+      salary: user.salary || ''
     };
     await setDoc(doc(firestore, 'users', uid), newUser);
     return newUser;

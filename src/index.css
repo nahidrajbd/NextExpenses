@@ -457,6 +457,10 @@ tbody tr:last-child td {
   animation: slideUp var(--transition-fast);
 }
 
+.modal-content.modal-lg {
+  max-width: 780px;
+}
+
 .modal-header {
   padding: 1.25rem 1.5rem;
   border-bottom: 1px solid var(--border-color);
