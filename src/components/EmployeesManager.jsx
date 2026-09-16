@@ -14,6 +14,7 @@ import {
   Search, Camera, FileText, IdCard, CreditCard, FileCheck, FileSignature, Briefcase
 } from 'lucide-react';
 import { getEmployeeStatus, STATUS_COLORS } from '../utils/schedule';
+import MiniBarChart from './MiniBarChart';
 
 const EMPTY_PROFILE = {
   name: '', email: '', phone: '', password: '', status: 'Active',
@@ -43,6 +44,7 @@ export default function EmployeesManager() {
   const [photoPreview, setPhotoPreview] = useState('');
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [, setTick] = useState(0); // forces re-render so live status badges stay current
+  const [financeSummary, setFinanceSummary] = useState(null);
 
   useEffect(() => { loadData(); }, []);
 
@@ -53,9 +55,13 @@ export default function EmployeesManager() {
 
   const loadData = async () => {
     try {
-      const [allUsers, ledgerData] = await Promise.all([db.getUsers(), db.getEmployeeLedger()]);
+      const allUsers = await db.getUsers();
       setEmployees(allUsers);
-      setLedger(ledgerData);
+      // Only admins need the full cross-employee ledger for the directory grid;
+      // employees' financial data is otherwise kept private to its owner.
+      if (isAdmin) {
+        setLedger(await db.getEmployeeLedger());
+      }
       if (selectedEmp) {
         const fresh = allUsers.find(u => u.id === selectedEmp.id);
         if (fresh) setSelectedEmp(fresh);
@@ -113,15 +119,26 @@ export default function EmployeesManager() {
     }
   };
 
-  const openDetail = (emp) => {
+  const openDetail = async (emp) => {
     setSelectedEmp(emp);
     setForm({ ...EMPTY_PROFILE, ...emp, newPassword: '' });
     setPhotoPreview(emp.photoURL || '');
     setDetailTab('overview');
+    setFinanceSummary(null);
+
+    // Financial data is only ever loaded for the profile owner or an admin viewer
+    if (isAdmin || emp.id === currentUser.id) {
+      try {
+        setFinanceSummary(await db.getSingleEmployeeSummary(emp.id));
+      } catch (e) {
+        console.error('Failed to load finance summary', e);
+      }
+    }
   };
 
   const closeDetail = () => {
     setSelectedEmp(null);
+    setFinanceSummary(null);
     setForm(EMPTY_PROFILE);
     setPhotoPreview('');
   };
@@ -240,7 +257,6 @@ export default function EmployeesManager() {
 
   // ---------- DETAIL VIEW ----------
   if (selectedEmp) {
-    const stats = getLedgerStats(selectedEmp.id);
     const isActive = selectedEmp.status === 'Active';
     const liveStatus = getEmployeeStatus(selectedEmp);
     const canEditSelected = isAdmin || selectedEmp.id === currentUser.id;
@@ -332,11 +348,34 @@ export default function EmployeesManager() {
               <OverviewRow label="Permanent Address" value={selectedEmp.permanentAddress || 'N/A'} />
             </div>
 
-            <div className="glass-card">
-              <h4 style={{ marginBottom: '1rem' }}>Expense Ledger Summary</h4>
-              <OverviewRow label="Approved Spent" value={formatBDT(stats.totalApproved)} />
-              <OverviewRow label="Total Paid" value={formatBDT(stats.totalPaid)} />
-              <OverviewRow label="Balance Due" value={formatBDT(stats.balanceDue)} />
+          </div>
+        )}
+
+        {detailTab === 'overview' && (isAdmin || selectedEmp.id === currentUser.id) && financeSummary && (
+          <div className="glass-card" style={{ marginTop: '1.5rem' }}>
+            <h4 style={{ marginBottom: '0.25rem' }}>Financial Summary</h4>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+              {selectedEmp.id === currentUser.id && !isAdmin
+                ? 'Visible only to you.'
+                : `Private financial data for ${selectedEmp.name}.`}
+            </p>
+            <MiniBarChart
+              data={[
+                { label: 'Approved', value: financeSummary.totalApproved, color: 'var(--success)' },
+                { label: 'Pending', value: financeSummary.totalPending, color: 'var(--info)' },
+                { label: 'Rejected', value: financeSummary.totalRejected, color: 'var(--danger)' },
+                { label: 'Paid Out', value: financeSummary.totalPaid, color: 'var(--primary)' },
+                { label: 'Balance Due', value: financeSummary.balanceDue, color: '#f59e0b' }
+              ]}
+              formatValue={formatBDT}
+            />
+            <div style={{
+              display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem', marginTop: '1.25rem'
+            }}>
+              <OverviewRow label="Total Submitted" value={formatBDT(financeSummary.totalSpent)} />
+              <OverviewRow label="Approved Spent" value={formatBDT(financeSummary.totalApproved)} />
+              <OverviewRow label="Total Paid" value={formatBDT(financeSummary.totalPaid)} />
+              <OverviewRow label="Balance Due" value={formatBDT(financeSummary.balanceDue)} />
             </div>
           </div>
         )}
@@ -476,20 +515,22 @@ export default function EmployeesManager() {
                 </div>
               </div>
 
-              <div style={{
-                backgroundColor: 'var(--bg-primary)', borderRadius: '8px', padding: '0.65rem',
-                display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.78rem',
-                border: '1px solid var(--border-color)', marginBottom: '0.9rem'
-              }}>
-                <div>
-                  <div style={{ color: 'var(--text-muted)' }}>Approved Spent</div>
-                  <div style={{ fontWeight: 700, color: 'var(--success)' }}>{formatBDT(stats.totalApproved)}</div>
+              {isAdmin && (
+                <div style={{
+                  backgroundColor: 'var(--bg-primary)', borderRadius: '8px', padding: '0.65rem',
+                  display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.78rem',
+                  border: '1px solid var(--border-color)', marginBottom: '0.9rem'
+                }}>
+                  <div>
+                    <div style={{ color: 'var(--text-muted)' }}>Approved Spent</div>
+                    <div style={{ fontWeight: 700, color: 'var(--success)' }}>{formatBDT(stats.totalApproved)}</div>
+                  </div>
+                  <div>
+                    <div style={{ color: 'var(--text-muted)' }}>Money Owed</div>
+                    <div style={{ fontWeight: 700, color: 'var(--primary)' }}>{formatBDT(stats.balanceDue)}</div>
+                  </div>
                 </div>
-                <div>
-                  <div style={{ color: 'var(--text-muted)' }}>Money Owed</div>
-                  <div style={{ fontWeight: 700, color: 'var(--primary)' }}>{formatBDT(stats.balanceDue)}</div>
-                </div>
-              </div>
+              )}
 
               <div style={{ display: 'flex', gap: '0.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem' }}>
                 <button onClick={(e) => { e.stopPropagation(); openDetail(emp); }} className="btn btn-secondary" style={{ flex: 1, padding: '0.45rem', fontSize: '0.78rem', gap: '0.25rem' }}>

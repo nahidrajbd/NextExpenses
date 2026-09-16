@@ -177,6 +177,8 @@ export default function App() {
           return <ExpensesList employeeId={currentUser.id} />;
         case 'employees':
           return <EmployeesManager />;
+        case 'live-status':
+          return <LiveStatusBoard />;
         case 'profile':
           return <Profile />;
         default:

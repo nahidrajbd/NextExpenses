@@ -7,6 +7,7 @@ import { Radio, Clock, UserX2, Settings, X, Save } from 'lucide-react';
 export default function LiveStatusBoard() {
   const { currentUser } = useContext(AuthContext);
   const { showToast } = useContext(ToastContext);
+  const isAdmin = currentUser?.role === 'admin';
 
   const [employees, setEmployees] = useState([]);
   const [now, setNow] = useState(new Date());
@@ -93,10 +94,12 @@ export default function LiveStatusBoard() {
             <Radio size={14} />
             <span>{now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} • Today: {todayKey(now)}</span>
           </div>
-          <button onClick={() => setIsScheduleOpen(true)} className="btn btn-primary">
-            <Settings size={16} />
-            <span>Set Schedules</span>
-          </button>
+          {isAdmin && (
+            <button onClick={() => setIsScheduleOpen(true)} className="btn btn-primary">
+              <Settings size={16} />
+              <span>Set Schedules</span>
+            </button>
+          )}
         </div>
       </div>
 

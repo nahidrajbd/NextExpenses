@@ -39,6 +39,7 @@ export default function Sidebar({ currentView, onViewChange, notificationsCount,
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { id: 'expenses', label: 'Expense History', icon: Receipt },
         { id: 'employees', label: 'Manage Employees', icon: Users },
+        { id: 'live-status', label: 'Live Office Status', icon: Radio },
         { id: 'profile', label: 'My Profile', icon: User }
       ];
 
