@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { db } from '../db';
 import { AuthContext, ToastContext } from '../App';
-import { getEmployeeStatus, STATUS_COLORS, todayKey, DAYS, defaultSchedule } from '../utils/schedule';
+import { getEmployeeStatus, STATUS_COLORS, todayKey, defaultSchedule } from '../utils/schedule';
 import { Radio, Clock, UserX2, Settings, X, Save } from 'lucide-react';
 
 export default function LiveStatusBoard() {
@@ -71,7 +71,12 @@ export default function LiveStatusBoard() {
             <div key={emp.id} className="glass-card" style={{ display: 'flex', gap: '0.85rem', alignItems: 'center', borderLeft: `4px solid ${tone}` }}>
               <Avatar emp={emp} size={46} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: '0.95rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{emp.name}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.95rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{emp.name}</div>
+                  {status.mode === 'wfh' && (
+                    <span className="badge" style={{ fontSize: '0.62rem', backgroundColor: 'rgba(101, 178, 232, 0.15)', color: 'var(--primary)' }}>WFH</span>
+                  )}
+                </div>
                 <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>{emp.designation || 'Staff Member'}</div>
                 <div style={{ fontSize: '0.75rem', color: tone, fontWeight: 600, marginTop: '0.15rem' }}>{status.detail || status.label}</div>
               </div>
@@ -149,24 +154,21 @@ function ScheduleModal({ employees, currentUser, showToast, onClose, onSaved }) 
   const [drafts, setDrafts] = useState(() => {
     const map = {};
     employees.forEach(emp => {
-      map[emp.id] = emp.schedule ? { ...emp.schedule, days: [...(emp.schedule.days || [])] } : defaultSchedule();
+      const base = defaultSchedule();
+      map[emp.id] = {
+        weekday: { ...base.weekday, ...(emp.schedule?.weekday || {}) },
+        weekend: { ...base.weekend, ...(emp.schedule?.weekend || {}) }
+      };
     });
     return map;
   });
   const [saving, setSaving] = useState(false);
 
-  const setDraft = (empId, patch) => {
-    setDrafts(prev => ({ ...prev, [empId]: { ...prev[empId], ...patch } }));
-  };
-
-  const toggleDay = (empId, day) => {
-    setDrafts(prev => {
-      const current = prev[empId];
-      const days = current.days.includes(day)
-        ? current.days.filter(d => d !== day)
-        : [...current.days, day];
-      return { ...prev, [empId]: { ...current, days } };
-    });
+  const setDraft = (empId, block, patch) => {
+    setDrafts(prev => ({
+      ...prev,
+      [empId]: { ...prev[empId], [block]: { ...prev[empId][block], ...patch } }
+    }));
   };
 
   const handleSaveAll = async () => {
@@ -193,61 +195,21 @@ function ScheduleModal({ employees, currentUser, showToast, onClose, onSaved }) 
         </div>
         <div className="modal-body">
           <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
-            Set one recurring shift time per employee and the days it applies to. This stays in effect every week until you change it.
+            Each employee has two recurring shifts: Mon–Fri regular office hours, and Sat–Sun work-from-home hours. Stays in effect every week until changed.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {employees.length === 0 && (
               <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>No employees to schedule yet.</div>
             )}
-            {employees.map(emp => {
-              const draft = drafts[emp.id];
-              return (
-                <div key={emp.id} style={{
-                  padding: '0.9rem 1rem', borderRadius: '10px', border: '1px solid var(--border-color)',
-                  backgroundColor: 'var(--bg-primary)'
-                }}>
-                  <div style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.6rem' }}>{emp.name}</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
-                    <input
-                      type="time"
-                      className="form-control"
-                      style={{ maxWidth: '140px' }}
-                      value={draft.start}
-                      onChange={(e) => setDraft(emp.id, { start: e.target.value })}
-                    />
-                    <span style={{ color: 'var(--text-muted)' }}>to</span>
-                    <input
-                      type="time"
-                      className="form-control"
-                      style={{ maxWidth: '140px' }}
-                      value={draft.end}
-                      onChange={(e) => setDraft(emp.id, { end: e.target.value })}
-                    />
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                    {DAYS.map(day => {
-                      const active = draft.days.includes(day);
-                      return (
-                        <button
-                          type="button"
-                          key={day}
-                          onClick={() => toggleDay(emp.id, day)}
-                          style={{
-                            padding: '0.3rem 0.6rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600,
-                            border: `1px solid ${active ? 'var(--primary)' : 'var(--border-color)'}`,
-                            backgroundColor: active ? 'var(--primary)' : 'var(--bg-secondary)',
-                            color: active ? '#fff' : 'var(--text-secondary)',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          {day}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
+            {employees.map(emp => (
+              <div key={emp.id} style={{
+                padding: '0.9rem 1rem', borderRadius: '10px', border: '1px solid var(--border-color)',
+                backgroundColor: 'var(--bg-primary)'
+              }}>
+                <div style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.75rem' }}>{emp.name}</div>
+                <ScheduleEditorFields schedule={drafts[emp.id]} onChange={(block, patch) => setDraft(emp.id, block, patch)} />
+              </div>
+            ))}
           </div>
         </div>
         <div className="modal-footer">
@@ -256,6 +218,59 @@ function ScheduleModal({ employees, currentUser, showToast, onClose, onSaved }) 
             <Save size={16} />
             <span>{saving ? 'Saving...' : 'Save All Schedules'}</span>
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Reusable pair of shift-time editors: Mon-Fri regular hours, Sat-Sun WFH hours.
+// Exported so employees can edit their own schedule from their profile.
+export function ScheduleEditorFields({ schedule, onChange }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+      <div>
+        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.4rem' }}>
+          Monday – Friday (Regular Workdays)
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem' }}>
+          <input
+            type="time"
+            className="form-control"
+            style={{ maxWidth: '140px' }}
+            value={schedule.weekday.start}
+            onChange={(e) => onChange('weekday', { start: e.target.value })}
+          />
+          <span style={{ color: 'var(--text-muted)' }}>to</span>
+          <input
+            type="time"
+            className="form-control"
+            style={{ maxWidth: '140px' }}
+            value={schedule.weekday.end}
+            onChange={(e) => onChange('weekday', { end: e.target.value })}
+          />
+        </div>
+      </div>
+      <div>
+        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.4rem' }}>
+          Saturday – Sunday (Work From Home)
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem' }}>
+          <input
+            type="time"
+            className="form-control"
+            style={{ maxWidth: '140px' }}
+            value={schedule.weekend.start}
+            onChange={(e) => onChange('weekend', { start: e.target.value })}
+          />
+          <span style={{ color: 'var(--text-muted)' }}>to</span>
+          <input
+            type="time"
+            className="form-control"
+            style={{ maxWidth: '140px' }}
+            value={schedule.weekend.end}
+            onChange={(e) => onChange('weekend', { end: e.target.value })}
+          />
         </div>
       </div>
     </div>

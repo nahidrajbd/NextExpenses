@@ -13,8 +13,9 @@ import {
   Users, Plus, Edit, X, UserCheck, UserX, Mail, Phone, Trash, ArrowLeft,
   Search, Camera, FileText, IdCard, CreditCard, FileCheck, FileSignature, Briefcase
 } from 'lucide-react';
-import { getEmployeeStatus, STATUS_COLORS } from '../utils/schedule';
+import { getEmployeeStatus, STATUS_COLORS, defaultSchedule } from '../utils/schedule';
 import MiniBarChart from './MiniBarChart';
+import { ScheduleEditorFields } from './LiveStatusBoard';
 
 const EMPTY_PROFILE = {
   name: '', email: '', phone: '', password: '', status: 'Active',
@@ -24,7 +25,8 @@ const EMPTY_PROFILE = {
   photoURL: '', employeeCode: '', designation: '', department: '',
   dateOfBirth: '', gender: '', bloodGroup: '', nationalId: '',
   fatherName: '', motherName: '', maritalStatus: '', education: '',
-  employmentType: 'Full-Time', salary: '', newPassword: ''
+  employmentType: 'Full-Time', salary: '', newPassword: '',
+  schedule: defaultSchedule()
 };
 
 export default function EmployeesManager() {
@@ -392,6 +394,18 @@ export default function EmployeesManager() {
               isEdit
               isAdmin={isAdmin}
             />
+
+            <div style={{ borderTop: '1px solid rgba(152, 152, 154, 0.3)', paddingTop: '0.75rem', marginTop: '0.75rem' }}>
+              <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.5rem' }}>Work Schedule</h4>
+              <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
+                Regular Mon–Fri office hours and Sat–Sun work-from-home hours. This stays in effect every week until changed.
+              </p>
+              <ScheduleEditorFields
+                schedule={form.schedule || defaultSchedule()}
+                onChange={(block, patch) => setField('schedule', { ...form.schedule, [block]: { ...form.schedule?.[block], ...patch } })}
+              />
+            </div>
+
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
               <button type="button" onClick={() => setDetailTab('overview')} className="btn btn-secondary">Cancel</button>
               <button type="submit" className="btn btn-primary">Save Changes</button>

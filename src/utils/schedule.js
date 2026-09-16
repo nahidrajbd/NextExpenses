@@ -1,14 +1,23 @@
 export const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const WEEKEND_DAYS = ['Sat', 'Sun'];
 
 const DAY_INDEX_TO_KEY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-// A single recurring shift applied to the selected days each week, until changed.
+// Two fixed recurring shifts per employee: Mon-Fri regular office hours,
+// and Sat-Sun work-from-home hours. Stays in effect until changed.
 export function defaultSchedule() {
-  return { start: '09:00', end: '18:00', days: ['Mon', 'Tue', 'Wed', 'Thu', 'Sun'] };
+  return {
+    weekday: { start: '09:00', end: '18:00' },
+    weekend: { start: '10:00', end: '15:00' }
+  };
 }
 
 export function todayKey(date = new Date()) {
   return DAY_INDEX_TO_KEY[date.getDay()];
+}
+
+export function isWeekend(date = new Date()) {
+  return WEEKEND_DAYS.includes(todayKey(date));
 }
 
 function toMinutes(hhmm) {
@@ -23,38 +32,42 @@ export const SOON_WINDOW_MINUTES = 30;
 // Determines an employee's live presence status based on their recurring schedule and the current time.
 export function getEmployeeStatus(employee, now = new Date()) {
   const schedule = employee.schedule;
-  const key = todayKey(now);
+  const weekend = isWeekend(now);
+  const shift = schedule?.[weekend ? 'weekend' : 'weekday'];
+  const modeLabel = weekend ? 'WFH' : 'In Office';
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
-  if (!schedule || !schedule.start || !schedule.end || !schedule.days?.includes(key)) {
-    return { status: 'off', label: 'Not Scheduled Today', detail: '' };
+  if (!shift || !shift.start || !shift.end) {
+    return { status: 'off', label: 'Not Scheduled Today', detail: '', mode: weekend ? 'wfh' : 'office' };
   }
 
-  const start = toMinutes(schedule.start);
-  const end = toMinutes(schedule.end);
+  const start = toMinutes(shift.start);
+  const end = toMinutes(shift.end);
 
   if (nowMinutes >= start && nowMinutes < end) {
     const minutesLeft = end - nowMinutes;
     return {
       status: 'online',
-      label: 'In Office Now',
-      detail: minutesLeft <= 30 ? `Shift ends in ${minutesLeft} min` : `Until ${schedule.end}`
+      label: `${modeLabel} Now`,
+      detail: minutesLeft <= 30 ? `Shift ends in ${minutesLeft} min` : `Until ${shift.end}`,
+      mode: weekend ? 'wfh' : 'office'
     };
   }
 
   if (nowMinutes < start && start - nowMinutes <= SOON_WINDOW_MINUTES) {
     return {
       status: 'soon',
-      label: 'Starting Soon',
-      detail: `In ${start - nowMinutes} min (${schedule.start})`
+      label: `${modeLabel} Starting Soon`,
+      detail: `In ${start - nowMinutes} min (${shift.start})`,
+      mode: weekend ? 'wfh' : 'office'
     };
   }
 
   if (nowMinutes < start) {
-    return { status: 'off', label: 'Not In Yet', detail: `Starts at ${schedule.start}` };
+    return { status: 'off', label: 'Not In Yet', detail: `Starts at ${shift.start}`, mode: weekend ? 'wfh' : 'office' };
   }
 
-  return { status: 'off', label: 'Shift Ended', detail: `Ended at ${schedule.end}` };
+  return { status: 'off', label: 'Shift Ended', detail: `Ended at ${shift.end}`, mode: weekend ? 'wfh' : 'office' };
 }
 
 export const STATUS_COLORS = {
