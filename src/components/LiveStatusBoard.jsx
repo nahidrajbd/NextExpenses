@@ -1,11 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { db } from '../db';
-import { getEmployeeStatus, STATUS_COLORS, todayKey } from '../utils/schedule';
-import { Radio, Clock, UserX2 } from 'lucide-react';
+import { AuthContext, ToastContext } from '../App';
+import { getEmployeeStatus, STATUS_COLORS, todayKey, DAYS, defaultSchedule } from '../utils/schedule';
+import { Radio, Clock, UserX2, Settings, X, Save } from 'lucide-react';
 
 export default function LiveStatusBoard() {
+  const { currentUser } = useContext(AuthContext);
+  const { showToast } = useContext(ToastContext);
+
   const [employees, setEmployees] = useState([]);
   const [now, setNow] = useState(new Date());
+  const [isScheduleOpen, setIsScheduleOpen] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -81,11 +86,17 @@ export default function LiveStatusBoard() {
       <div className="page-header">
         <div className="page-title-group">
           <h2>Live Office Status</h2>
-          <p>Real-time view of who's in the office right now, based on scheduled work hours.</p>
+          <p>Real-time view of who's in the office right now, based on each employee's schedule.</p>
         </div>
-        <div className="badge" style={{ alignSelf: 'center', display: 'flex', alignItems: 'center', gap: '0.4rem', backgroundColor: 'var(--bg-primary)' }}>
-          <Radio size={14} />
-          <span>{now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} • Today: {todayKey(now)}</span>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          <div className="badge" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', backgroundColor: 'var(--bg-primary)' }}>
+            <Radio size={14} />
+            <span>{now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} • Today: {todayKey(now)}</span>
+          </div>
+          <button onClick={() => setIsScheduleOpen(true)} className="btn btn-primary">
+            <Settings size={16} />
+            <span>Set Schedules</span>
+          </button>
         </div>
       </div>
 
@@ -117,6 +128,133 @@ export default function LiveStatusBoard() {
           <p>No employees registered yet.</p>
         </div>
       )}
+
+      {isScheduleOpen && (
+        <ScheduleModal
+          employees={employees}
+          currentUser={currentUser}
+          showToast={showToast}
+          onClose={() => setIsScheduleOpen(false)}
+          onSaved={loadData}
+        />
+      )}
+    </div>
+  );
+}
+
+function ScheduleModal({ employees, currentUser, showToast, onClose, onSaved }) {
+  const [drafts, setDrafts] = useState(() => {
+    const map = {};
+    employees.forEach(emp => {
+      map[emp.id] = emp.schedule ? { ...emp.schedule, days: [...(emp.schedule.days || [])] } : defaultSchedule();
+    });
+    return map;
+  });
+  const [saving, setSaving] = useState(false);
+
+  const setDraft = (empId, patch) => {
+    setDrafts(prev => ({ ...prev, [empId]: { ...prev[empId], ...patch } }));
+  };
+
+  const toggleDay = (empId, day) => {
+    setDrafts(prev => {
+      const current = prev[empId];
+      const days = current.days.includes(day)
+        ? current.days.filter(d => d !== day)
+        : [...current.days, day];
+      return { ...prev, [empId]: { ...current, days } };
+    });
+  };
+
+  const handleSaveAll = async () => {
+    setSaving(true);
+    try {
+      await Promise.all(employees.map(emp => db.updateUser(emp.id, { schedule: drafts[emp.id] })));
+      await db.addLog(currentUser.id, 'Update Schedules', `Updated work schedules for ${employees.length} employee(s)`);
+      showToast('Schedules saved successfully.', 'success');
+      await onSaved();
+      onClose();
+    } catch (err) {
+      showToast('Failed to save schedules.', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content modal-lg">
+        <div className="modal-header">
+          <h3 style={{ fontSize: '1.25rem' }}>Employee Work Schedules</h3>
+          <button onClick={onClose} className="btn-icon"><X size={20} /></button>
+        </div>
+        <div className="modal-body">
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
+            Set one recurring shift time per employee and the days it applies to. This stays in effect every week until you change it.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {employees.length === 0 && (
+              <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>No employees to schedule yet.</div>
+            )}
+            {employees.map(emp => {
+              const draft = drafts[emp.id];
+              return (
+                <div key={emp.id} style={{
+                  padding: '0.9rem 1rem', borderRadius: '10px', border: '1px solid var(--border-color)',
+                  backgroundColor: 'var(--bg-primary)'
+                }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.6rem' }}>{emp.name}</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                    <input
+                      type="time"
+                      className="form-control"
+                      style={{ maxWidth: '140px' }}
+                      value={draft.start}
+                      onChange={(e) => setDraft(emp.id, { start: e.target.value })}
+                    />
+                    <span style={{ color: 'var(--text-muted)' }}>to</span>
+                    <input
+                      type="time"
+                      className="form-control"
+                      style={{ maxWidth: '140px' }}
+                      value={draft.end}
+                      onChange={(e) => setDraft(emp.id, { end: e.target.value })}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                    {DAYS.map(day => {
+                      const active = draft.days.includes(day);
+                      return (
+                        <button
+                          type="button"
+                          key={day}
+                          onClick={() => toggleDay(emp.id, day)}
+                          style={{
+                            padding: '0.3rem 0.6rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600,
+                            border: `1px solid ${active ? 'var(--primary)' : 'var(--border-color)'}`,
+                            backgroundColor: active ? 'var(--primary)' : 'var(--bg-secondary)',
+                            color: active ? '#fff' : 'var(--text-secondary)',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {day}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button type="button" onClick={onClose} className="btn btn-secondary">Cancel</button>
+          <button type="button" onClick={handleSaveAll} className="btn btn-primary" disabled={saving || employees.length === 0}>
+            <Save size={16} />
+            <span>{saving ? 'Saving...' : 'Save All Schedules'}</span>
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -15,7 +15,7 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth, db as firestore, firebaseConfig, app } from './firebase';
 import { sendSubmissionEmail, sendApprovalEmail, sendTransactionEmail } from './services/emailService';
-import { emptyWeeklySchedule } from './utils/schedule';
+import { defaultSchedule } from './utils/schedule';
 
 // Secondary Auth instance for creating new employees without logging the Admin out
 let secondaryAuth = null;
@@ -125,7 +125,7 @@ export const db = {
       education: user.education?.trim() || '',
       employmentType: user.employmentType || 'Full-Time',
       salary: user.salary || '',
-      weeklySchedule: user.weeklySchedule || emptyWeeklySchedule()
+      schedule: user.schedule || defaultSchedule()
     };
     await setDoc(doc(firestore, 'users', uid), newUser);
     return newUser;

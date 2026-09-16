@@ -2,13 +2,9 @@ export const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 const DAY_INDEX_TO_KEY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-export const DEFAULT_DAY = { enabled: false, start: '09:00', end: '18:00' };
-
-export function emptyWeeklySchedule() {
-  return DAYS.reduce((acc, day) => {
-    acc[day] = { ...DEFAULT_DAY, enabled: day !== 'Fri' && day !== 'Sat' };
-    return acc;
-  }, {});
+// A single recurring shift applied to the selected days each week, until changed.
+export function defaultSchedule() {
+  return { start: '09:00', end: '18:00', days: ['Mon', 'Tue', 'Wed', 'Thu', 'Sun'] };
 }
 
 export function todayKey(date = new Date()) {
@@ -24,26 +20,25 @@ function toMinutes(hhmm) {
 // "Starting soon" window, in minutes
 export const SOON_WINDOW_MINUTES = 30;
 
-// Determines an employee's live presence status based on their weekly schedule and the current time.
+// Determines an employee's live presence status based on their recurring schedule and the current time.
 export function getEmployeeStatus(employee, now = new Date()) {
-  const schedule = employee.weeklySchedule || {};
+  const schedule = employee.schedule;
   const key = todayKey(now);
-  const day = schedule[key];
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
-  if (!day || !day.enabled || !day.start || !day.end) {
+  if (!schedule || !schedule.start || !schedule.end || !schedule.days?.includes(key)) {
     return { status: 'off', label: 'Not Scheduled Today', detail: '' };
   }
 
-  const start = toMinutes(day.start);
-  const end = toMinutes(day.end);
+  const start = toMinutes(schedule.start);
+  const end = toMinutes(schedule.end);
 
   if (nowMinutes >= start && nowMinutes < end) {
     const minutesLeft = end - nowMinutes;
     return {
       status: 'online',
       label: 'In Office Now',
-      detail: minutesLeft <= 30 ? `Shift ends in ${minutesLeft} min` : `Until ${day.end}`
+      detail: minutesLeft <= 30 ? `Shift ends in ${minutesLeft} min` : `Until ${schedule.end}`
     };
   }
 
@@ -51,15 +46,15 @@ export function getEmployeeStatus(employee, now = new Date()) {
     return {
       status: 'soon',
       label: 'Starting Soon',
-      detail: `In ${start - nowMinutes} min (${day.start})`
+      detail: `In ${start - nowMinutes} min (${schedule.start})`
     };
   }
 
   if (nowMinutes < start) {
-    return { status: 'off', label: 'Not In Yet', detail: `Starts at ${day.start}` };
+    return { status: 'off', label: 'Not In Yet', detail: `Starts at ${schedule.start}` };
   }
 
-  return { status: 'off', label: 'Shift Ended', detail: `Ended at ${day.end}` };
+  return { status: 'off', label: 'Shift Ended', detail: `Ended at ${schedule.end}` };
 }
 
 export const STATUS_COLORS = {

@@ -11,9 +11,9 @@ import {
 } from '../utils/documentGenerator';
 import {
   Users, Plus, Edit, X, UserCheck, UserX, Mail, Phone, Trash, ArrowLeft,
-  Search, Camera, FileText, IdCard, CreditCard, FileCheck, FileSignature, Briefcase, Clock
+  Search, Camera, FileText, IdCard, CreditCard, FileCheck, FileSignature, Briefcase
 } from 'lucide-react';
-import { DAYS, emptyWeeklySchedule, getEmployeeStatus, STATUS_COLORS } from '../utils/schedule';
+import { getEmployeeStatus, STATUS_COLORS } from '../utils/schedule';
 
 const EMPTY_PROFILE = {
   name: '', email: '', phone: '', password: '', status: 'Active',
@@ -23,8 +23,7 @@ const EMPTY_PROFILE = {
   photoURL: '', employeeCode: '', designation: '', department: '',
   dateOfBirth: '', gender: '', bloodGroup: '', nationalId: '',
   fatherName: '', motherName: '', maritalStatus: '', education: '',
-  employmentType: 'Full-Time', salary: '', newPassword: '',
-  weeklySchedule: emptyWeeklySchedule()
+  employmentType: 'Full-Time', salary: '', newPassword: ''
 };
 
 export default function EmployeesManager() {
@@ -151,20 +150,6 @@ export default function EmployeesManager() {
     }
   };
 
-  const handleSaveSchedule = async () => {
-    if (!selectedEmp) return;
-    try {
-      const saved = await db.updateUser(selectedEmp.id, { weeklySchedule: form.weeklySchedule });
-      await db.addLog(currentUser.id, 'Update Schedule', `Updated weekly work schedule for "${form.name}"`);
-      showToast('Work schedule saved successfully.', 'success');
-      setSelectedEmp(saved);
-      setDetailTab('overview');
-      await loadData();
-    } catch (err) {
-      showToast('Failed to save work schedule.', 'error');
-    }
-  };
-
   const toggleStatus = async (emp) => {
     const nextStatus = emp.status === 'Active' ? 'Inactive' : 'Active';
     try {
@@ -281,7 +266,6 @@ export default function EmployeesManager() {
         <div className="tab-container">
           <button className={`tab-btn ${detailTab === 'overview' ? 'active' : ''}`} onClick={() => setDetailTab('overview')}>Overview</button>
           <button className={`tab-btn ${detailTab === 'edit' ? 'active' : ''}`} onClick={() => setDetailTab('edit')}>Edit Profile</button>
-          <button className={`tab-btn ${detailTab === 'schedule' ? 'active' : ''}`} onClick={() => setDetailTab('schedule')}>Schedule</button>
           <button className={`tab-btn ${detailTab === 'documents' ? 'active' : ''}`} onClick={() => setDetailTab('documents')}>Documents</button>
         </div>
 
@@ -348,68 +332,6 @@ export default function EmployeesManager() {
               <button type="submit" className="btn btn-primary">Save Changes</button>
             </div>
           </form>
-        )}
-
-        {detailTab === 'schedule' && (
-          <div className="glass-card">
-            <h4 style={{ marginBottom: '0.25rem' }}>Weekly Work Schedule</h4>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
-              Set this employee's regular shift hours. The Live Status board uses this to show who is currently in office or starting soon.
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-              {DAYS.map(day => {
-                const daySchedule = form.weeklySchedule?.[day] || { enabled: false, start: '09:00', end: '18:00' };
-                return (
-                  <div key={day} style={{
-                    display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.6rem 0.85rem',
-                    backgroundColor: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-color)'
-                  }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '110px', fontWeight: 600, fontSize: '0.85rem' }}>
-                      <input
-                        type="checkbox"
-                        checked={!!daySchedule.enabled}
-                        onChange={(e) => setField('weeklySchedule', {
-                          ...form.weeklySchedule,
-                          [day]: { ...daySchedule, enabled: e.target.checked }
-                        })}
-                      />
-                      {day}
-                    </label>
-                    <input
-                      type="time"
-                      className="form-control"
-                      style={{ maxWidth: '140px' }}
-                      value={daySchedule.start}
-                      disabled={!daySchedule.enabled}
-                      onChange={(e) => setField('weeklySchedule', {
-                        ...form.weeklySchedule,
-                        [day]: { ...daySchedule, start: e.target.value }
-                      })}
-                    />
-                    <span style={{ color: 'var(--text-muted)' }}>to</span>
-                    <input
-                      type="time"
-                      className="form-control"
-                      style={{ maxWidth: '140px' }}
-                      value={daySchedule.end}
-                      disabled={!daySchedule.enabled}
-                      onChange={(e) => setField('weeklySchedule', {
-                        ...form.weeklySchedule,
-                        [day]: { ...daySchedule, end: e.target.value }
-                      })}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
-              <button type="button" onClick={() => setDetailTab('overview')} className="btn btn-secondary">Cancel</button>
-              <button type="button" onClick={handleSaveSchedule} className="btn btn-primary">
-                <Clock size={16} />
-                <span>Save Schedule</span>
-              </button>
-            </div>
-          </div>
         )}
 
         {detailTab === 'documents' && (
