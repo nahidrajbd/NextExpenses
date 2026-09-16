@@ -14,7 +14,8 @@ import {
   Menu,
   X,
   Bell,
-  Users
+  Users,
+  Radio
 } from 'lucide-react';
 
 export default function Sidebar({ currentView, onViewChange, notificationsCount, onRefreshNotifs }) {
@@ -27,6 +28,7 @@ export default function Sidebar({ currentView, onViewChange, notificationsCount,
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { id: 'expenses', label: 'Review Expenses', icon: Receipt },
         { id: 'employees', label: 'Manage Employees', icon: Users },
+        { id: 'live-status', label: 'Live Office Status', icon: Radio },
         { id: 'categories', label: 'Categories Manager', icon: Tags },
         { id: 'payments', label: 'Record Payments', icon: Coins },
         { id: 'reports', label: 'Reports Module', icon: FileText },

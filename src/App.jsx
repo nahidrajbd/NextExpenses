@@ -14,6 +14,7 @@ import ReportsModule from './components/ReportsModule';
 import AuditLogs from './components/AuditLogs';
 import Profile from './components/Profile';
 import EmployeesManager from './components/EmployeesManager';
+import LiveStatusBoard from './components/LiveStatusBoard';
 
 export const AuthContext = createContext(null);
 export const ThemeContext = createContext(null);
@@ -163,6 +164,8 @@ export default function App() {
           return <Profile />;
         case 'employees':
           return <EmployeesManager />;
+        case 'live-status':
+          return <LiveStatusBoard />;
         default:
           return <AdminDashboard onViewChange={setCurrentView} />;
       }

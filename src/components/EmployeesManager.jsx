@@ -11,8 +11,9 @@ import {
 } from '../utils/documentGenerator';
 import {
   Users, Plus, Edit, X, UserCheck, UserX, Mail, Phone, Trash, ArrowLeft,
-  Search, Camera, FileText, IdCard, CreditCard, FileCheck, FileSignature, Briefcase
+  Search, Camera, FileText, IdCard, CreditCard, FileCheck, FileSignature, Briefcase, Clock
 } from 'lucide-react';
+import { DAYS, emptyWeeklySchedule, getEmployeeStatus, STATUS_COLORS } from '../utils/schedule';
 
 const EMPTY_PROFILE = {
   name: '', email: '', phone: '', password: '', status: 'Active',
@@ -22,7 +23,8 @@ const EMPTY_PROFILE = {
   photoURL: '', employeeCode: '', designation: '', department: '',
   dateOfBirth: '', gender: '', bloodGroup: '', nationalId: '',
   fatherName: '', motherName: '', maritalStatus: '', education: '',
-  employmentType: 'Full-Time', salary: '', newPassword: ''
+  employmentType: 'Full-Time', salary: '', newPassword: '',
+  weeklySchedule: emptyWeeklySchedule()
 };
 
 export default function EmployeesManager() {
@@ -40,8 +42,14 @@ export default function EmployeesManager() {
   const [form, setForm] = useState(EMPTY_PROFILE);
   const [photoPreview, setPhotoPreview] = useState('');
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [, setTick] = useState(0); // forces re-render so live status badges stay current
 
   useEffect(() => { loadData(); }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => setTick(t => t + 1), 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const loadData = async () => {
     try {
@@ -143,6 +151,20 @@ export default function EmployeesManager() {
     }
   };
 
+  const handleSaveSchedule = async () => {
+    if (!selectedEmp) return;
+    try {
+      const saved = await db.updateUser(selectedEmp.id, { weeklySchedule: form.weeklySchedule });
+      await db.addLog(currentUser.id, 'Update Schedule', `Updated weekly work schedule for "${form.name}"`);
+      showToast('Work schedule saved successfully.', 'success');
+      setSelectedEmp(saved);
+      setDetailTab('overview');
+      await loadData();
+    } catch (err) {
+      showToast('Failed to save work schedule.', 'error');
+    }
+  };
+
   const toggleStatus = async (emp) => {
     const nextStatus = emp.status === 'Active' ? 'Inactive' : 'Active';
     try {
@@ -219,6 +241,7 @@ export default function EmployeesManager() {
   if (selectedEmp) {
     const stats = getLedgerStats(selectedEmp.id);
     const isActive = selectedEmp.status === 'Active';
+    const liveStatus = getEmployeeStatus(selectedEmp);
 
     return (
       <div>
@@ -234,6 +257,13 @@ export default function EmployeesManager() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <span className="badge" style={{
+              alignSelf: 'center', backgroundColor: `${STATUS_COLORS[liveStatus.status]}20`,
+              color: STATUS_COLORS[liveStatus.status], display: 'flex', alignItems: 'center', gap: '0.35rem'
+            }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: STATUS_COLORS[liveStatus.status], display: 'inline-block' }} />
+              {liveStatus.label}
+            </span>
             <span className={`badge ${isActive ? 'badge-approved' : 'badge-rejected'}`} style={{ alignSelf: 'center' }}>
               {selectedEmp.status}
             </span>
@@ -251,6 +281,7 @@ export default function EmployeesManager() {
         <div className="tab-container">
           <button className={`tab-btn ${detailTab === 'overview' ? 'active' : ''}`} onClick={() => setDetailTab('overview')}>Overview</button>
           <button className={`tab-btn ${detailTab === 'edit' ? 'active' : ''}`} onClick={() => setDetailTab('edit')}>Edit Profile</button>
+          <button className={`tab-btn ${detailTab === 'schedule' ? 'active' : ''}`} onClick={() => setDetailTab('schedule')}>Schedule</button>
           <button className={`tab-btn ${detailTab === 'documents' ? 'active' : ''}`} onClick={() => setDetailTab('documents')}>Documents</button>
         </div>
 
@@ -317,6 +348,68 @@ export default function EmployeesManager() {
               <button type="submit" className="btn btn-primary">Save Changes</button>
             </div>
           </form>
+        )}
+
+        {detailTab === 'schedule' && (
+          <div className="glass-card">
+            <h4 style={{ marginBottom: '0.25rem' }}>Weekly Work Schedule</h4>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
+              Set this employee's regular shift hours. The Live Status board uses this to show who is currently in office or starting soon.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+              {DAYS.map(day => {
+                const daySchedule = form.weeklySchedule?.[day] || { enabled: false, start: '09:00', end: '18:00' };
+                return (
+                  <div key={day} style={{
+                    display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.6rem 0.85rem',
+                    backgroundColor: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-color)'
+                  }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '110px', fontWeight: 600, fontSize: '0.85rem' }}>
+                      <input
+                        type="checkbox"
+                        checked={!!daySchedule.enabled}
+                        onChange={(e) => setField('weeklySchedule', {
+                          ...form.weeklySchedule,
+                          [day]: { ...daySchedule, enabled: e.target.checked }
+                        })}
+                      />
+                      {day}
+                    </label>
+                    <input
+                      type="time"
+                      className="form-control"
+                      style={{ maxWidth: '140px' }}
+                      value={daySchedule.start}
+                      disabled={!daySchedule.enabled}
+                      onChange={(e) => setField('weeklySchedule', {
+                        ...form.weeklySchedule,
+                        [day]: { ...daySchedule, start: e.target.value }
+                      })}
+                    />
+                    <span style={{ color: 'var(--text-muted)' }}>to</span>
+                    <input
+                      type="time"
+                      className="form-control"
+                      style={{ maxWidth: '140px' }}
+                      value={daySchedule.end}
+                      disabled={!daySchedule.enabled}
+                      onChange={(e) => setField('weeklySchedule', {
+                        ...form.weeklySchedule,
+                        [day]: { ...daySchedule, end: e.target.value }
+                      })}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
+              <button type="button" onClick={() => setDetailTab('overview')} className="btn btn-secondary">Cancel</button>
+              <button type="button" onClick={handleSaveSchedule} className="btn btn-primary">
+                <Clock size={16} />
+                <span>Save Schedule</span>
+              </button>
+            </div>
+          </div>
         )}
 
         {detailTab === 'documents' && (
@@ -388,6 +481,7 @@ export default function EmployeesManager() {
         {filteredEmployees.map(emp => {
           const stats = getLedgerStats(emp.id);
           const isActive = emp.status === 'Active';
+          const liveStatus = getEmployeeStatus(emp);
           return (
             <div
               key={emp.id}
@@ -401,12 +495,21 @@ export default function EmployeesManager() {
               }}
             >
               <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'center', marginBottom: '0.85rem' }}>
-                <Avatar emp={emp} size={52} />
+                <div style={{ position: 'relative', flexShrink: 0 }}>
+                  <Avatar emp={emp} size={52} />
+                  <span title={liveStatus.label} style={{
+                    position: 'absolute', bottom: 0, right: 0, width: 13, height: 13, borderRadius: '50%',
+                    backgroundColor: STATUS_COLORS[liveStatus.status], border: '2px solid var(--bg-secondary)'
+                  }} />
+                </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <h3 style={{ fontSize: '1.05rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{emp.name}</h3>
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                     <Briefcase size={12} />
                     <span>{emp.designation || 'Staff Member'}{emp.department ? ` • ${emp.department}` : ''}</span>
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: STATUS_COLORS[liveStatus.status], fontWeight: 600, marginTop: '0.15rem' }}>
+                    {liveStatus.label}
                   </div>
                 </div>
                 <span className={`badge ${isActive ? 'badge-approved' : 'badge-rejected'}`}>{emp.status}</span>
