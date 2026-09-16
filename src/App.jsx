@@ -1,7 +1,7 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { initDB, db } from './db';
 import { auth, db as firestore } from './firebase';
-import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
+import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import Login from './components/Login';
 import Sidebar from './components/Sidebar';
@@ -114,6 +114,48 @@ export default function App() {
     }
   };
 
+  const loginWithGoogle = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const firebaseUser = result.user;
+
+      const userSnap = await getDoc(doc(firestore, 'users', firebaseUser.uid));
+      if (!userSnap.exists()) {
+        await signOut(auth);
+        throw new Error('This Google account isn\'t linked to any employee profile yet. Sign in with your email and password first, then link Google from My Profile.');
+      }
+
+      const userData = userSnap.data();
+      if (userData.status !== 'Active') {
+        await signOut(auth);
+        throw new Error('Your account is currently disabled. Please contact the Admin.');
+      }
+
+      setCurrentUser(userData);
+      setCurrentView('dashboard');
+
+      if (userData.role === 'employee') {
+        const notifs = await db.getNotifications(userData.id);
+        setNotificationsCount(notifs.filter(n => !n.read).length);
+      }
+
+      showToast(`Welcome back, ${userData.name}!`, 'success');
+      await db.addLog(userData.id, 'Login', `${userData.name} logged in with Google.`);
+    } catch (err) {
+      let friendlyMessage = err.message;
+      if (err.code === 'auth/account-exists-with-different-credential') {
+        friendlyMessage = 'This email already has a password-based account. Sign in with your email and password, then link Google from My Profile.';
+      } else if (err.code === 'auth/popup-closed-by-user') {
+        friendlyMessage = 'Google sign-in was cancelled.';
+      } else if (err.code === 'auth/popup-blocked') {
+        friendlyMessage = 'Your browser blocked the Google sign-in popup. Please allow popups and try again.';
+      }
+      if (friendlyMessage) showToast(friendlyMessage, 'error');
+      throw err;
+    }
+  };
+
   const logout = async () => {
     if (currentUser) {
       try {
@@ -217,7 +259,7 @@ export default function App() {
   if (!currentUser) {
     return (
       <ToastContext.Provider value={{ showToast }}>
-        <Login onLogin={login} />
+        <Login onLogin={login} onGoogleLogin={loginWithGoogle} />
         <ToastList toasts={toasts} />
       </ToastContext.Provider>
     );
