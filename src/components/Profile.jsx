@@ -29,14 +29,22 @@ export default function Profile() {
       showToast('Google account linked! You can now sign in with Google too.', 'success');
       forceRerender(t => t + 1);
     } catch (err) {
-      console.error(err);
-      let friendlyMessage = 'Failed to link Google account.';
+      console.error('Google link failed:', err.code, err.message);
+      let friendlyMessage = `Failed to link Google account (${err.code || 'unknown error'}).`;
       if (err.code === 'auth/credential-already-in-use') {
         friendlyMessage = 'This Google account is already linked to another user.';
       } else if (err.code === 'auth/popup-closed-by-user') {
         friendlyMessage = 'Google linking was cancelled.';
       } else if (err.code === 'auth/popup-blocked') {
         friendlyMessage = 'Your browser blocked the popup. Please allow popups and try again.';
+      } else if (err.code === 'auth/unauthorized-domain') {
+        friendlyMessage = 'This domain isn\'t authorized for Google sign-in yet. Add it under Firebase Console → Authentication → Settings → Authorized domains.';
+      } else if (err.code === 'auth/operation-not-allowed') {
+        friendlyMessage = 'Google sign-in isn\'t enabled for this project yet. Enable it under Firebase Console → Authentication → Sign-in method.';
+      } else if (err.code === 'auth/requires-recent-login') {
+        friendlyMessage = 'Please log out and log back in, then try linking Google again.';
+      } else if (err.code === 'auth/network-request-failed') {
+        friendlyMessage = 'Network error while contacting Google. Check your connection and try again.';
       }
       showToast(friendlyMessage, 'error');
     } finally {
