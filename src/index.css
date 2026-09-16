@@ -672,3 +672,12 @@ tbody tr:last-child td {
     background: #f0f0f0 !important;
   }
 }
+
+/* Walking human avatar on the shift-progress bar (Live Office Status) */
+@keyframes walk-bob {
+  0%, 100% { transform: translate(-50%, -50%) translateY(0) scaleX(1); }
+  50% { transform: translate(-50%, -50%) translateY(-3px) scaleX(1); }
+}
+.walking-avatar {
+  animation: walk-bob 0.6s ease-in-out infinite;
+}

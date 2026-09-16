@@ -43,6 +43,15 @@ function toMinutes(hhmm) {
   return h * 60 + m;
 }
 
+// Formats a "HH:MM" (24h) string as 12-hour clock time with AM/PM, e.g. "09:00" -> "9:00 AM".
+export function formatTime12(hhmm) {
+  if (!hhmm) return '';
+  const [h, m] = hhmm.split(':').map(Number);
+  const period = h >= 12 ? 'PM' : 'AM';
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  return `${hour12}:${String(m).padStart(2, '0')} ${period}`;
+}
+
 // "Starting soon" window, in minutes
 export const SOON_WINDOW_MINUTES = 30;
 
@@ -63,11 +72,16 @@ export function getEmployeeStatus(employee, now = new Date()) {
 
   if (nowMinutes >= start && nowMinutes < end) {
     const minutesLeft = end - nowMinutes;
+    const progress = Math.max(0, Math.min(100, Math.round(((nowMinutes - start) / (end - start)) * 100)));
     return {
       status: 'online',
       label: `${modeLabel} Now`,
-      detail: minutesLeft <= 30 ? `Shift ends in ${minutesLeft} min` : `Until ${shift.end}`,
-      mode: weekend ? 'wfh' : 'office'
+      detail: minutesLeft <= 30 ? `Shift ends in ${minutesLeft} min` : `Until ${formatTime12(shift.end)}`,
+      mode: weekend ? 'wfh' : 'office',
+      progress,
+      minutesLeft,
+      shiftStart: shift.start,
+      shiftEnd: shift.end
     };
   }
 
@@ -75,16 +89,17 @@ export function getEmployeeStatus(employee, now = new Date()) {
     return {
       status: 'soon',
       label: `${modeLabel} Starting Soon`,
-      detail: `In ${start - nowMinutes} min (${shift.start})`,
-      mode: weekend ? 'wfh' : 'office'
+      detail: `In ${start - nowMinutes} min (${formatTime12(shift.start)})`,
+      mode: weekend ? 'wfh' : 'office',
+      minutesUntil: start - nowMinutes
     };
   }
 
   if (nowMinutes < start) {
-    return { status: 'off', label: 'Not In Yet', detail: `Starts at ${shift.start}`, mode: weekend ? 'wfh' : 'office' };
+    return { status: 'off', label: 'Not In Yet', detail: `Starts at ${formatTime12(shift.start)}`, mode: weekend ? 'wfh' : 'office', minutesUntil: start - nowMinutes };
   }
 
-  return { status: 'off', label: 'Shift Ended', detail: `Ended at ${shift.end}`, mode: weekend ? 'wfh' : 'office' };
+  return { status: 'off', label: 'Shift Ended', detail: `Ended at ${formatTime12(shift.end)}`, mode: weekend ? 'wfh' : 'office' };
 }
 
 export const STATUS_COLORS = {

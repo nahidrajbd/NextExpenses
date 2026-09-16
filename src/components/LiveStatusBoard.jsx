@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { db } from '../db';
 import { AuthContext, ToastContext } from '../App';
-import { getEmployeeStatus, STATUS_COLORS, todayKey, normalizeSchedule } from '../utils/schedule';
-import { Radio, Clock, UserX2, Settings, X, Save } from 'lucide-react';
+import { getEmployeeStatus, STATUS_COLORS, todayKey, normalizeSchedule, formatTime12 } from '../utils/schedule';
+import { Radio, Clock, UserX2, Settings, X, Save, PersonStanding } from 'lucide-react';
+
+const MAX_STARTING_SOON = 3;
 
 export default function LiveStatusBoard() {
   const { currentUser } = useContext(AuthContext);
@@ -51,10 +53,43 @@ export default function LiveStatusBoard() {
     .map(e => ({ emp: e, status: getEmployeeStatus(e, now) }));
 
   const online = withStatus.filter(x => x.status.status === 'online');
-  const soon = withStatus.filter(x => x.status.status === 'soon');
+  const soon = withStatus
+    .filter(x => x.status.status === 'soon')
+    .sort((a, b) => a.status.minutesUntil - b.status.minutesUntil)
+    .slice(0, MAX_STARTING_SOON);
   const offDuty = withStatus.filter(x => x.status.status === 'off');
 
-  const Section = ({ title, items, tone }) => (
+  const ShiftProgress = ({ status }) => (
+    <div style={{ marginTop: '0.5rem' }}>
+      <div style={{
+        position: 'relative', height: 8, borderRadius: 999,
+        backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)', overflow: 'visible'
+      }}>
+        <div style={{
+          position: 'absolute', top: 0, left: 0, bottom: 0, borderRadius: 999,
+          width: `${status.progress}%`, backgroundColor: STATUS_COLORS.online,
+          transition: 'width 15s linear'
+        }} />
+        <div
+          className="walking-avatar"
+          style={{
+            position: 'absolute', top: '50%', left: `${status.progress}%`,
+            transition: 'left 15s linear',
+            color: STATUS_COLORS.online, display: 'flex'
+          }}
+        >
+          <PersonStanding size={18} strokeWidth={2.5} />
+        </div>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>
+        <span>{formatTime12(status.shiftStart)}</span>
+        <span style={{ fontWeight: 700, color: STATUS_COLORS.online }}>{status.progress}% covered</span>
+        <span>{formatTime12(status.shiftEnd)}</span>
+      </div>
+    </div>
+  );
+
+  const Section = ({ title, items, tone, showProgress }) => (
     <div style={{ marginBottom: '2rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
         <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: tone }} />
@@ -79,6 +114,7 @@ export default function LiveStatusBoard() {
                 </div>
                 <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>{emp.designation || 'Staff Member'}</div>
                 <div style={{ fontSize: '0.75rem', color: tone, fontWeight: 600, marginTop: '0.15rem' }}>{status.detail || status.label}</div>
+                {showProgress && status.status === 'online' && <ShiftProgress status={status} />}
               </div>
             </div>
           ))}
@@ -97,7 +133,7 @@ export default function LiveStatusBoard() {
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
           <div className="badge" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', backgroundColor: 'var(--bg-primary)' }}>
             <Radio size={14} />
-            <span>{now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} • Today: {todayKey(now)}</span>
+            <span>{now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })} • Today: {todayKey(now)}</span>
           </div>
           {isAdmin && (
             <button onClick={() => setIsScheduleOpen(true)} className="btn btn-primary">
@@ -108,7 +144,7 @@ export default function LiveStatusBoard() {
         </div>
       </div>
 
-      <Section title="In Office Now" items={online} tone={STATUS_COLORS.online} />
+      <Section title="In Office Now" items={online} tone={STATUS_COLORS.online} showProgress />
       <Section title="Starting Soon" items={soon} tone={STATUS_COLORS.soon} />
 
       <div style={{ marginBottom: '0.5rem' }}>
