@@ -30,6 +30,7 @@ export default function EmployeesManager() {
   const { currentUser } = useContext(AuthContext);
   const { showToast } = useContext(ToastContext);
   const fileInputRef = useRef(null);
+  const isAdmin = currentUser?.role === 'admin';
 
   const [employees, setEmployees] = useState([]);
   const [ledger, setLedger] = useState([]);
@@ -90,6 +91,7 @@ export default function EmployeesManager() {
 
   const handleAddEmployee = async (e) => {
     e.preventDefault();
+    if (!isAdmin) return;
     if (!form.name || !form.email || !form.phone || !form.password) {
       showToast('Please fill in all required fields.', 'error');
       return;
@@ -127,6 +129,11 @@ export default function EmployeesManager() {
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     if (!selectedEmp) return;
+    const canEdit = isAdmin || selectedEmp.id === currentUser.id;
+    if (!canEdit) {
+      showToast('You can only edit your own profile.', 'error');
+      return;
+    }
     try {
       const users = await db.getUsers();
       if (users.some(u => u.id !== selectedEmp.id && u.email === form.email.toLowerCase().trim())) {
@@ -138,6 +145,13 @@ export default function EmployeesManager() {
       delete updatedData.newPassword;
       delete updatedData.password;
       if (form.newPassword?.trim()) updatedData.password = form.newPassword.trim();
+
+      // Non-admins cannot change governance fields on their own profile
+      if (!isAdmin) {
+        delete updatedData.role;
+        delete updatedData.status;
+        delete updatedData.employeeCode;
+      }
 
       const saved = await db.updateUser(selectedEmp.id, updatedData);
       await db.addLog(currentUser.id, 'Update Employee', `Modified employee profile for "${form.name}"`);
@@ -151,6 +165,7 @@ export default function EmployeesManager() {
   };
 
   const toggleStatus = async (emp) => {
+    if (!isAdmin) return;
     const nextStatus = emp.status === 'Active' ? 'Inactive' : 'Active';
     try {
       await db.updateUser(emp.id, { status: nextStatus });
@@ -163,6 +178,7 @@ export default function EmployeesManager() {
   };
 
   const handleDeleteEmployee = async (emp) => {
+    if (!isAdmin) return;
     if (currentUser.id === emp.id) {
       showToast('You cannot delete your own admin account!', 'error');
       return;
@@ -227,6 +243,7 @@ export default function EmployeesManager() {
     const stats = getLedgerStats(selectedEmp.id);
     const isActive = selectedEmp.status === 'Active';
     const liveStatus = getEmployeeStatus(selectedEmp);
+    const canEditSelected = isAdmin || selectedEmp.id === currentUser.id;
 
     return (
       <div>
@@ -252,21 +269,29 @@ export default function EmployeesManager() {
             <span className={`badge ${isActive ? 'badge-approved' : 'badge-rejected'}`} style={{ alignSelf: 'center' }}>
               {selectedEmp.status}
             </span>
-            <button onClick={() => toggleStatus(selectedEmp)} className="btn btn-secondary">
-              {isActive ? <UserX size={16} /> : <UserCheck size={16} />}
-              <span>{isActive ? 'Deactivate' : 'Activate'}</span>
-            </button>
-            <button onClick={() => handleDeleteEmployee(selectedEmp)} className="btn" style={{ color: 'var(--danger)', border: '1px solid var(--danger)' }}>
-              <Trash size={16} />
-              <span>Delete</span>
-            </button>
+            {isAdmin && (
+              <button onClick={() => toggleStatus(selectedEmp)} className="btn btn-secondary">
+                {isActive ? <UserX size={16} /> : <UserCheck size={16} />}
+                <span>{isActive ? 'Deactivate' : 'Activate'}</span>
+              </button>
+            )}
+            {isAdmin && (
+              <button onClick={() => handleDeleteEmployee(selectedEmp)} className="btn" style={{ color: 'var(--danger)', border: '1px solid var(--danger)' }}>
+                <Trash size={16} />
+                <span>Delete</span>
+              </button>
+            )}
           </div>
         </div>
 
         <div className="tab-container">
           <button className={`tab-btn ${detailTab === 'overview' ? 'active' : ''}`} onClick={() => setDetailTab('overview')}>Overview</button>
-          <button className={`tab-btn ${detailTab === 'edit' ? 'active' : ''}`} onClick={() => setDetailTab('edit')}>Edit Profile</button>
-          <button className={`tab-btn ${detailTab === 'documents' ? 'active' : ''}`} onClick={() => setDetailTab('documents')}>Documents</button>
+          {canEditSelected && (
+            <button className={`tab-btn ${detailTab === 'edit' ? 'active' : ''}`} onClick={() => setDetailTab('edit')}>Edit Profile</button>
+          )}
+          {isAdmin && (
+            <button className={`tab-btn ${detailTab === 'documents' ? 'active' : ''}`} onClick={() => setDetailTab('documents')}>Documents</button>
+          )}
         </div>
 
         {detailTab === 'overview' && (
@@ -316,7 +341,7 @@ export default function EmployeesManager() {
           </div>
         )}
 
-        {detailTab === 'edit' && (
+        {detailTab === 'edit' && canEditSelected && (
           <form onSubmit={handleSaveProfile} className="glass-card">
             <ProfileFormFields
               form={form}
@@ -326,6 +351,7 @@ export default function EmployeesManager() {
               handlePhotoChange={handlePhotoChange}
               fileInputRef={fileInputRef}
               isEdit
+              isAdmin={isAdmin}
             />
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
               <button type="button" onClick={() => setDetailTab('overview')} className="btn btn-secondary">Cancel</button>
@@ -334,7 +360,7 @@ export default function EmployeesManager() {
           </form>
         )}
 
-        {detailTab === 'documents' && (
+        {detailTab === 'documents' && isAdmin && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem' }}>
             <DocCard
               icon={<FileSignature size={22} />}
@@ -377,13 +403,15 @@ export default function EmployeesManager() {
     <div>
       <div className="page-header">
         <div className="page-title-group">
-          <h2>Manage Employees</h2>
-          <p>HR directory — view profiles, manage staff records, and issue official documents.</p>
+          <h2>{isAdmin ? 'Manage Employees' : 'Employee Directory'}</h2>
+          <p>{isAdmin ? "HR directory — view profiles, manage staff records, and issue official documents." : "Browse your teammates' profiles. You can only edit your own."}</p>
         </div>
-        <button onClick={openAddModal} className="btn btn-primary">
-          <Plus size={18} />
-          <span>Add Employee</span>
-        </button>
+        {isAdmin && (
+          <button onClick={openAddModal} className="btn btn-primary">
+            <Plus size={18} />
+            <span>Add Employee</span>
+          </button>
+        )}
       </div>
 
       <div className="glass-card" style={{ marginBottom: '1.5rem', padding: '0.75rem 1rem' }}>
@@ -466,16 +494,18 @@ export default function EmployeesManager() {
               <div style={{ display: 'flex', gap: '0.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem' }}>
                 <button onClick={(e) => { e.stopPropagation(); openDetail(emp); }} className="btn btn-secondary" style={{ flex: 1, padding: '0.45rem', fontSize: '0.78rem', gap: '0.25rem' }}>
                   <Edit size={13} />
-                  <span>View / Edit Profile</span>
+                  <span>{isAdmin || emp.id === currentUser.id ? 'View / Edit Profile' : 'View Profile'}</span>
                 </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleDeleteEmployee(emp); }}
-                  className="btn-icon"
-                  style={{ color: 'var(--danger)', backgroundColor: 'rgba(239, 68, 68, 0.08)', border: 'none', borderRadius: '6px' }}
-                  title="Delete profile"
-                >
-                  <Trash size={15} />
-                </button>
+                {isAdmin && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleDeleteEmployee(emp); }}
+                    className="btn-icon"
+                    style={{ color: 'var(--danger)', backgroundColor: 'rgba(239, 68, 68, 0.08)', border: 'none', borderRadius: '6px' }}
+                    title="Delete profile"
+                  >
+                    <Trash size={15} />
+                  </button>
+                )}
               </div>
             </div>
           );
@@ -550,7 +580,7 @@ function DocCard({ icon, title, desc, onClick }) {
   );
 }
 
-function ProfileFormFields({ form, setField, photoPreview, uploadingPhoto, handlePhotoChange, fileInputRef, isEdit }) {
+function ProfileFormFields({ form, setField, photoPreview, uploadingPhoto, handlePhotoChange, fileInputRef, isEdit, isAdmin = true }) {
   return (
     <>
       {/* Photo */}
@@ -624,22 +654,24 @@ function ProfileFormFields({ form, setField, photoPreview, uploadingPhoto, handl
         </div>
       </div>
 
-      <div className="form-row">
-        <div className="form-group">
-          <label className="form-label">Account Status</label>
-          <select className="form-control" value={form.status} onChange={(e) => setField('status', e.target.value)}>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
-          </select>
+      {isAdmin && (
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">Account Status</label>
+            <select className="form-control" value={form.status} onChange={(e) => setField('status', e.target.value)}>
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">System Role</label>
+            <select className="form-control" value={form.role} onChange={(e) => setField('role', e.target.value)}>
+              <option value="employee">Employee</option>
+              <option value="admin">System Admin</option>
+            </select>
+          </div>
         </div>
-        <div className="form-group">
-          <label className="form-label">System Role</label>
-          <select className="form-control" value={form.role} onChange={(e) => setField('role', e.target.value)}>
-            <option value="employee">Employee</option>
-            <option value="admin">System Admin</option>
-          </select>
-        </div>
-      </div>
+      )}
 
       {/* Employment Details */}
       <div style={{ borderTop: '1px solid rgba(152, 152, 154, 0.3)', paddingTop: '0.75rem', marginTop: '0.75rem' }}>
@@ -647,7 +679,7 @@ function ProfileFormFields({ form, setField, photoPreview, uploadingPhoto, handl
         <div className="form-row">
           <div className="form-group">
             <label className="form-label">Employee ID</label>
-            <input type="text" placeholder="e.g. EMP-1024" className="form-control" value={form.employeeCode} onChange={(e) => setField('employeeCode', e.target.value)} />
+            <input type="text" placeholder="e.g. EMP-1024" className="form-control" value={form.employeeCode} disabled={!isAdmin} onChange={(e) => setField('employeeCode', e.target.value)} />
           </div>
           <div className="form-group">
             <label className="form-label">Designation</label>

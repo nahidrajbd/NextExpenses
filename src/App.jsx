@@ -175,6 +175,8 @@ export default function App() {
           return <EmployeeDashboard onRefreshNotifs={refreshNotificationCount} />;
         case 'expenses':
           return <ExpensesList employeeId={currentUser.id} />;
+        case 'employees':
+          return <EmployeesManager />;
         case 'profile':
           return <Profile />;
         default:
