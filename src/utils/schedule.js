@@ -69,6 +69,7 @@ export function formatTime12(hhmm) {
 export const SOON_WINDOW_MINUTES = 30;
 
 // Determines an employee's live presence status based on their recurring schedule and the current time.
+// Supports overnight shifts (e.g. 17:30–00:00) where the end time crosses midnight.
 export function getEmployeeStatus(employee, now = new Date()) {
   const schedule = normalizeSchedule(employee.schedule);
   const weekend = isWeekend(now);
@@ -83,9 +84,16 @@ export function getEmployeeStatus(employee, now = new Date()) {
   const start = toMinutes(shift.start);
   const end = toMinutes(shift.end);
 
-  if (nowMinutes >= start && nowMinutes < end) {
-    const minutesLeft = end - nowMinutes;
-    const progress = Math.max(0, Math.min(100, Math.round(((nowMinutes - start) / (end - start)) * 100)));
+  // Overnight shift: end time is numerically less than start (e.g. 17:30 → 00:00).
+  // Normalize by adding 1440 to the effective end, and to nowMinutes when we're in the
+  // post-midnight tail of the shift (nowMinutes < end).
+  const isOvernight = end < start;
+  const effectiveEnd = isOvernight ? end + 1440 : end;
+  const nowNorm = (isOvernight && nowMinutes < end) ? nowMinutes + 1440 : nowMinutes;
+
+  if (nowNorm >= start && nowNorm < effectiveEnd) {
+    const minutesLeft = effectiveEnd - nowNorm;
+    const progress = Math.max(0, Math.min(100, Math.round(((nowNorm - start) / (effectiveEnd - start)) * 100)));
     return {
       status: 'online',
       label: `${modeLabel} Now`,
@@ -98,18 +106,18 @@ export function getEmployeeStatus(employee, now = new Date()) {
     };
   }
 
-  if (nowMinutes < start && start - nowMinutes <= SOON_WINDOW_MINUTES) {
+  if (nowNorm < start && start - nowNorm <= SOON_WINDOW_MINUTES) {
     return {
       status: 'soon',
       label: `${modeLabel} Starting Soon`,
-      detail: `In ${start - nowMinutes} min (${formatTime12(shift.start)})`,
+      detail: `In ${start - nowNorm} min (${formatTime12(shift.start)})`,
       mode: weekend ? 'wfh' : 'office',
-      minutesUntil: start - nowMinutes
+      minutesUntil: start - nowNorm
     };
   }
 
-  if (nowMinutes < start) {
-    return { status: 'off', label: 'Not In Yet', detail: `Starts at ${formatTime12(shift.start)}`, mode: weekend ? 'wfh' : 'office', minutesUntil: start - nowMinutes };
+  if (nowNorm < start) {
+    return { status: 'off', label: 'Not In Yet', detail: `Starts at ${formatTime12(shift.start)}`, mode: weekend ? 'wfh' : 'office', minutesUntil: start - nowNorm };
   }
 
   return { status: 'off', label: 'Shift Ended', detail: `Ended at ${formatTime12(shift.end)}`, mode: weekend ? 'wfh' : 'office' };
