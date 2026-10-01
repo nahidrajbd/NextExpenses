@@ -277,8 +277,8 @@ export function generateEmployeeInfoSheet(emp) {
   doc.setLineWidth(0.3);
   doc.line(ML, 37, W - MR, 37);
 
-  // Photo box
-  const photoSize = 32;
+  // Photo box — smaller, top-right
+  const photoSize = 22;
   const photoX = W - MR - photoSize;
   const photoY = 41;
 
@@ -290,13 +290,13 @@ export function generateEmployeeInfoSheet(emp) {
     try { doc.addImage(emp.photoURL, 'JPEG', photoX, photoY, photoSize, photoSize); } catch (e) { /* ignore */ }
   } else {
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
+    doc.setFontSize(6.5);
     doc.setTextColor(140, 140, 140);
     doc.text('Photo', photoX + photoSize / 2, photoY + photoSize / 2 + 1.5, { align: 'center' });
   }
 
-  // Name & identity block
-  let y = 46;
+  // Name & identity block — starts below the photo bottom edge
+  let y = photoY + photoSize + 6;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
   doc.setTextColor(20, 20, 20);
@@ -319,7 +319,7 @@ export function generateEmployeeInfoSheet(emp) {
   y += 4;
   doc.setDrawColor(180, 180, 180);
   doc.setLineWidth(0.3);
-  doc.line(ML, y, photoX - 4, y);
+  doc.line(ML, y, W - MR, y);
   y += 8;
 
   // Table helpers
