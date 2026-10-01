@@ -7,7 +7,8 @@ import {
   generateNOCLetter,
   generateExperienceLetter,
   generateIDCard,
-  generateVisitingCard
+  generateVisitingCard,
+  generateEmployeeInfoSheet
 } from '../utils/documentGenerator';
 import {
   Users, Plus, Edit, X, UserCheck, UserX, Mail, Phone, Trash, ArrowLeft,
@@ -432,6 +433,12 @@ export default function EmployeesManager() {
               title="Visiting Card"
               desc="Standard business/visiting card with contact details."
               onClick={() => runDocGen(generateVisitingCard, selectedEmp)}
+            />
+            <DocCard
+              icon={<FileText size={22} />}
+              title="Employee Information Sheet"
+              desc="Printable A4 information page with photo and all employee details."
+              onClick={() => runDocGen(generateEmployeeInfoSheet, selectedEmp)}
             />
           </div>
         )}

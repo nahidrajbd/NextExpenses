@@ -1,11 +1,11 @@
 import { jsPDF } from 'jspdf';
 
 export const COMPANY = {
-  name: 'NextExpenses Ltd.',
+  name: 'NextPost Media',
   address: 'House 12, Road 5, Gulshan, Dhaka-1212, Bangladesh',
   phone: '+880 1700-000000',
   email: 'hr@nextpostmedia.com',
-  website: 'www.nextexpenses.com'
+  website: 'www.nextpostmedia.com'
 };
 
 const todayStr = () => new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -242,4 +242,198 @@ export function generateVisitingCard(emp) {
   doc.text(COMPANY.address, 38, 48, { maxWidth: 48 });
 
   doc.save(`Visiting_Card_${emp.name.replace(/\s+/g, '_')}.pdf`);
+}
+
+// ─── A4 Employee Information Sheet ──────────────────────────────────────────
+export function generateEmployeeInfoSheet(emp) {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const W = 210;
+
+  // ── Header band ────────────────────────────────────────────────────────────
+  doc.setFillColor(15, 23, 42);
+  doc.rect(0, 0, W, 28, 'F');
+  doc.setFillColor(101, 178, 232);
+  doc.rect(0, 28, W, 3, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(17);
+  doc.text(COMPANY.name, 14, 15);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(180, 210, 235);
+  doc.text('EMPLOYEE INFORMATION SHEET', 14, 22);
+  doc.text(`Date: ${todayStr()}`, W - 14, 22, { align: 'right' });
+
+  // ── Photo box (top-right of body) ─────────────────────────────────────────
+  const photoX = W - 14 - 36;
+  const photoY = 36;
+  const photoSize = 36;
+
+  doc.setDrawColor(101, 178, 232);
+  doc.setLineWidth(0.6);
+  doc.rect(photoX, photoY, photoSize, photoSize);
+
+  if (emp.photoURL) {
+    try { doc.addImage(emp.photoURL, 'JPEG', photoX, photoY, photoSize, photoSize); } catch (e) { /* ignore */ }
+  } else {
+    doc.setFillColor(230, 240, 250);
+    doc.rect(photoX, photoY, photoSize, photoSize, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(20);
+    doc.setTextColor(101, 178, 232);
+    doc.text((emp.name || '?').charAt(0).toUpperCase(), photoX + photoSize / 2, photoY + photoSize / 2 + 4, { align: 'center' });
+  }
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6.5);
+  doc.setTextColor(100, 120, 140);
+  doc.text('Employee Photo', photoX + photoSize / 2, photoY + photoSize + 4.5, { align: 'center' });
+
+  // ── Name & designation ────────────────────────────────────────────────────
+  let y = 38;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.setTextColor(15, 23, 42);
+  doc.text(emp.name || 'N/A', 14, y);
+
+  y += 6;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(101, 178, 232);
+  doc.text(`${emp.designation || 'Staff Member'}${emp.department ? '  \u2022  ' + emp.department : ''}`, 14, y);
+
+  y += 5;
+  doc.setFontSize(8.5);
+  doc.setTextColor(100, 120, 140);
+  doc.text(`Employee ID: ${emp.employeeCode || 'N/A'}   |   Status: ${emp.status || 'N/A'}   |   Type: ${emp.employmentType || 'N/A'}`, 14, y);
+
+  y += 3;
+  doc.setDrawColor(220, 230, 240);
+  doc.setLineWidth(0.4);
+  doc.line(14, y, photoX - 4, y);
+  y += 10;
+
+  // ── Section & field helpers ────────────────────────────────────────────────
+  const colLeft = 14;
+  const colMid  = 14 + (W - 28) / 2 + 2;
+  const colRight = W - 14;
+
+  const sectionTitle = (title, yPos) => {
+    doc.setFillColor(239, 246, 255);
+    doc.rect(colLeft, yPos - 4.5, W - 28, 7, 'F');
+    doc.setFillColor(101, 178, 232);
+    doc.rect(colLeft, yPos - 4.5, 3, 7, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(15, 23, 42);
+    doc.text(title.toUpperCase(), 20, yPos);
+    return yPos + 8;
+  };
+
+  const fieldCell = (label, value, xStart, yPos) => {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(100, 120, 140);
+    doc.text(label, xStart, yPos);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.2);
+    doc.setTextColor(20, 30, 50);
+    doc.text(String(value || '\u2014'), xStart, yPos + 4.5);
+  };
+
+  const twoCol = (rows, startY) => {
+    let ty = startY;
+    rows.forEach(([lL, vL, lR, vR], i) => {
+      fieldCell(lL, vL, colLeft, ty);
+      if (lR) fieldCell(lR, vR, colMid, ty);
+      ty += 12;
+      if (i < rows.length - 1) {
+        doc.setDrawColor(230, 235, 245);
+        doc.setLineWidth(0.25);
+        doc.line(colLeft, ty - 3, colRight, ty - 3);
+      }
+    });
+    return ty;
+  };
+
+  // ── CONTACT & PERSONAL ────────────────────────────────────────────────────
+  y = sectionTitle('Contact & Personal Information', y);
+  y = twoCol([
+    ['Email Address', emp.email, 'Phone Number', emp.phone],
+    ['Date of Birth', emp.dateOfBirth, 'Gender', emp.gender],
+    ['Blood Group', emp.bloodGroup, 'Marital Status', emp.maritalStatus],
+    ['National ID / NID', emp.nationalId, 'Education', emp.education],
+    ["Father's Name", emp.fatherName, "Mother's Name", emp.motherName],
+  ], y);
+  y += 4;
+
+  // ── EMPLOYMENT DETAILS ────────────────────────────────────────────────────
+  y = sectionTitle('Employment Details', y);
+  y = twoCol([
+    ['Designation', emp.designation, 'Department', emp.department],
+    ['Employment Type', emp.employmentType, 'Date Joined', emp.dateJoined],
+    ['System Role', emp.role, 'Account Status', emp.status],
+  ], y);
+  y += 4;
+
+  // ── EMERGENCY CONTACT ─────────────────────────────────────────────────────
+  y = sectionTitle('Emergency Contact', y);
+  y = twoCol([
+    ['Contact Person', emp.emergencyContactName, 'Relationship', emp.emergencyContactRelation],
+    ['Emergency Phone', emp.emergencyContactPhone, '', ''],
+  ], y);
+  y += 4;
+
+  // ── ADDRESS ───────────────────────────────────────────────────────────────
+  y = sectionTitle('Address Information', y);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(100, 120, 140);
+  doc.text('Present Address', colLeft, y);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.2);
+  doc.setTextColor(20, 30, 50);
+  doc.text(doc.splitTextToSize(emp.presentAddress || '\u2014', (W - 28) / 2 - 4), colLeft, y + 4.5);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(100, 120, 140);
+  doc.text('Permanent Address', colMid, y);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.2);
+  doc.setTextColor(20, 30, 50);
+  doc.text(doc.splitTextToSize(emp.permanentAddress || '\u2014', (W - 28) / 2 - 4), colMid, y + 4.5);
+  y += 14;
+
+  // ── SIGNATURE SECTION ─────────────────────────────────────────────────────
+  y = Math.max(y + 12, 235);
+  doc.setDrawColor(180, 195, 215);
+  doc.setLineWidth(0.3);
+
+  doc.line(14, y, 72, y);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(100, 120, 140);
+  doc.text('Employee Signature', 43, y + 4.5, { align: 'center' });
+
+  doc.line(82, y, 140, y);
+  doc.text('HR Manager', 111, y + 4.5, { align: 'center' });
+
+  doc.line(150, y, 196, y);
+  doc.text('Date', 173, y + 4.5, { align: 'center' });
+
+  // ── Footer ────────────────────────────────────────────────────────────────
+  doc.setFillColor(15, 23, 42);
+  doc.rect(0, 282, W, 15, 'F');
+  doc.setFillColor(101, 178, 232);
+  doc.rect(0, 282, W, 1.5, 'F');
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(180, 210, 235);
+  doc.text(`${COMPANY.name}  \u2022  ${COMPANY.address}`, W / 2, 288, { align: 'center' });
+  doc.text(`${COMPANY.phone}  \u2022  ${COMPANY.email}  \u2022  ${COMPANY.website}`, W / 2, 293, { align: 'center' });
+
+  doc.save(`Employee_Info_Sheet_${(emp.name || 'Employee').replace(/\s+/g, '_')}.pdf`);
 }
