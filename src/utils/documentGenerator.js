@@ -2,9 +2,9 @@
 
 export const COMPANY = {
   name: 'NextPost Media',
-  address: 'House 12, Road 5, Gulshan, Dhaka-1212, Bangladesh',
-  phone: '+880 1700-000000',
-  email: 'hr@nextpostmedia.com',
+  address: '4th Floor, Afroza Tower, Uposhohor New Market, Rajshahi-6000',
+  phone: '01622-909637',
+  email: 'hi@nextpostmedia.com',
   website: 'www.nextpostmedia.com'
 };
 
